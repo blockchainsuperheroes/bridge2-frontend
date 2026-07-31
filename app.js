@@ -33,12 +33,27 @@ const TOK = () => ({
 }[payWith]);
 
 /* ---------------- terms gate ---------------- */
+function checkTosScroll() {
+  const box = $('tosbox'); if (!box) return;
+  const canScroll = box.scrollHeight > box.clientHeight + 8;
+  const atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 8;
+  if (atEnd || !canScroll) {
+    $('agree').disabled = false;
+    const h = $('scrollhint');
+    if (h) { h.textContent = '✓ Thanks for reading — you can continue.'; h.classList.add('done'); }
+  }
+}
 function showGate(force) {
   if (!force && localStorage.getItem(AGREED_KEY) === '1') { enterApp(); return; }
   $('gate').style.display = 'flex'; $('app').style.display = 'none';
+  const box = $('tosbox'); if (box) box.scrollTop = 0;
+  $('agree').disabled = true;
+  const h = $('scrollhint'); if (h) { h.textContent = '▼ Scroll through the terms above to enable the button.'; h.classList.remove('done'); }
+  setTimeout(checkTosScroll, 60); // in case the content is short enough not to scroll
 }
 function enterApp() { $('gate').style.display = 'none'; $('app').style.display = 'block'; }
 function agree() {
+  if ($('agree').disabled) return;
   if ($('dontshow').checked) localStorage.setItem(AGREED_KEY, '1');
   else localStorage.removeItem(AGREED_KEY);
   enterApp();
@@ -382,6 +397,7 @@ async function finalize() {
 
 /* ---------------- wiring ---------------- */
 window.addEventListener('DOMContentLoaded', () => {
+  $('tosbox')?.addEventListener('scroll', checkTosScroll);
   showGate(false);
   $('agree').addEventListener('click', agree);
   $('showterms').addEventListener('click', (e) => { e.preventDefault(); showGate(true); });

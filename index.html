@@ -78,6 +78,15 @@
     .appfine{font-size:11px;color:#6b7ba0;margin-top:14px;line-height:1.5}
     #form{display:none}
     code{color:#cfe}
+    .tosbox{max-height:200px;overflow-y:auto;border:1px solid #2b3a5e;border-radius:10px;padding:4px 14px;margin:14px 0 6px;background:#0b1120}
+    .tosbox::-webkit-scrollbar{width:9px}
+    .tosbox::-webkit-scrollbar-thumb{background:#33456e;border-radius:5px}
+    .tosbox::-webkit-scrollbar-track{background:#0b1120}
+    .tosbox .not{margin-top:12px}
+    .tosend{font-size:12px;color:#58e08f;margin:10px 0 2px;font-weight:600}
+    .scrollhint{font-size:11.5px;color:#e0a26a;margin:2px 0 12px;transition:color .3s}
+    .scrollhint.done{color:#58e08f}
+    #agree:disabled{opacity:.5;cursor:not-allowed;filter:grayscale(.35)}
   </style>
 </head>
 <body>
@@ -90,30 +99,36 @@
 
       <div class="banner"><b>Notice:</b> following a recent, unintended exploit, the previous bridge is <b>fully locked</b>. This is the new, secured <b>one-way top-up</b> path — a 2-of-2 signed, on-chain, trustless flow with open visibility to everyone's status.</div>
 
-      <ul class="facts">
-        <li><b>One-way only</b> — you move $PC <i>into</i> the ecosystem; there is no user route back out to Ethereum.</li>
-        <li>The Ethereum $PC you top up is <b>locked permanently</b>; you receive an in-ecosystem credit.</li>
-        <li><b>Rewards for effort &amp; progress</b> (leaderboards, VIP tiers) are <b>funded separately</b>, on-chain and transparent.</li>
-      </ul>
+      <p class="fine" style="margin-top:12px"><b>In short:</b> this is a <b>one-way</b> top-up. Ethereum $PC you send is <b>locked permanently</b> and you receive a <b>non-transferable in-ecosystem credit</b> with <b>no cash value</b> and no route back out. Please read the full terms below — scroll to the end to enable the button.</p>
 
-      <div class="not">
-        <h3>In-ecosystem $PC is NOT (PC tokenomics §09)</h3>
-        <li>Money or legal tender outside the platform</li>
-        <li>Redeemable for cash by the purchaser</li>
-        <li>Transferable to other participants, wallets, or platforms</li>
-        <li>Exchangeable back for the Ethereum-side $PC</li>
-        <li>An investment, deposit, or store of value</li>
-        <li>Listed on any major exchange (CEX/DEX), or guaranteed ever to be</li>
-        <li>Guaranteed convertible to outside value by any medium — there may currently be no way to move $PC value off Pentagon Chain</li>
+      <div class="tosbox" id="tosbox">
+        <ul class="facts">
+          <li><b>One-way only</b> — you move $PC <i>into</i> the ecosystem; there is no user route back out to Ethereum.</li>
+          <li>The Ethereum $PC you top up is <b>locked permanently</b>; you receive an in-ecosystem credit.</li>
+          <li><b>Rewards for effort &amp; progress</b> (leaderboards, VIP tiers) are <b>funded separately</b>, on-chain and transparent.</li>
+        </ul>
+
+        <div class="not">
+          <h3>In-ecosystem $PC is NOT (PC tokenomics §09)</h3>
+          <li>Money or legal tender outside the platform</li>
+          <li>Redeemable for cash by the purchaser</li>
+          <li>Transferable to other participants, wallets, or platforms</li>
+          <li>Exchangeable back for the Ethereum-side $PC</li>
+          <li>An investment, deposit, or store of value</li>
+          <li>Listed on any major exchange (CEX/DEX), or guaranteed ever to be</li>
+          <li>Guaranteed convertible to outside value by any medium — there may currently be no way to move $PC value off Pentagon Chain</li>
+        </div>
+
+        <p class="fine">By continuing you confirm you've read the <a href="https://pentagon.games/PCtokenomics#not" target="_blank" rel="noopener">$PC tokenomics &amp; community guide</a>. Think prepaid top-up card / arcade credits — value is in the play, not in resale.</p>
+        <p class="fine" style="margin-top:8px">$PC works like a loyalty / rewards points program — think Starbucks Stars, airline miles, or membership points: its value is in what it unlocks <b>inside</b> Pentagon Chain, not in resale. It is <b>not listed on any major exchange</b>, and there may currently be <b>no way to convert it to value outside Pentagon Chain</b> by any medium. For more information, read the <a href="https://pentagon.games/PCtokenomics#not" target="_blank" rel="noopener">tokenomics</a>.</p>
+        <p class="fine" style="margin-top:8px">Do not use this service if you are a citizen or resident of, or located in, any jurisdiction where acquiring or holding such tokens is restricted or prohibited, or if you are unsure of your eligibility. If you don't understand or don't agree with these terms, do not proceed.</p>
+        <p class="fine" style="margin-top:8px">This interface is an <b>open-source, community-built</b> frontend to the Pentagon Chain bridge contracts — one, but not the exclusive, way to interact with them. The source is public and anyone may review, fork, or self-host it (<a href="https://github.com/blockchainsuperheroes/bridge2-frontend" target="_blank" rel="noopener">source</a>); this deployment is served as a static Cloudflare Page. It is provided by community members <b>"as is," without warranties</b>, and is <b>non-custodial</b> — you transact directly with the on-chain contracts through your own wallet. Always verify you are on the official Pentagon Games domain.</p>
+        <p class="tosend">— End of terms. Thank you for reading. —</p>
       </div>
-
-      <p class="fine">By continuing you confirm you've read the <a href="https://pentagon.games/PCtokenomics#not" target="_blank" rel="noopener">$PC tokenomics &amp; community guide</a>. Think prepaid top-up card / arcade credits — value is in the play, not in resale.</p>
-      <p class="fine" style="margin-top:8px">$PC works like a loyalty / rewards points program — think Starbucks Stars, airline miles, or membership points: its value is in what it unlocks <b>inside</b> Pentagon Chain, not in resale. It is <b>not listed on any major exchange</b>, and there may currently be <b>no way to convert it to value outside Pentagon Chain</b> by any medium. For more information, read the <a href="https://pentagon.games/PCtokenomics#not" target="_blank" rel="noopener">tokenomics</a>.</p>
-      <p class="fine" style="margin-top:8px">Do not use this service if you are a citizen or resident of, or located in, any jurisdiction where acquiring or holding such tokens is restricted or prohibited, or if you are unsure of your eligibility. If you don't understand or don't agree with these terms, do not proceed.</p>
-      <p class="fine" style="margin-top:8px">This interface is an <b>open-source, community-built</b> frontend to the Pentagon Chain bridge contracts — one, but not the exclusive, way to interact with them. The source is public and anyone may review, fork, or self-host it (<a href="https://github.com/blockchainsuperheroes/bridge2-frontend" target="_blank" rel="noopener">source</a>); this deployment is served as a static Cloudflare Page. It is provided by community members <b>"as is," without warranties</b>, and is <b>non-custodial</b> — you transact directly with the on-chain contracts through your own wallet. Always verify you are on the official Pentagon Games domain.</p>
+      <p class="scrollhint" id="scrollhint">▼ Scroll through the terms above to enable the button.</p>
 
       <label class="chk"><input type="checkbox" id="dontshow" checked /> Don't show this again</label>
-      <button id="agree" class="cta big">I agree, understand and continue</button>
+      <button id="agree" class="cta big" disabled>I agree, understand and continue</button>
     </div>
   </div>
 
