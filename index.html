@@ -54,6 +54,22 @@
     .capwarn{display:none;background:#2a1512;border:1px solid #7a2f2f;border-radius:10px;padding:11px 13px;margin-top:12px;font-size:12.5px;line-height:1.5;color:#ffb0b0}
     .capwarn b{color:#ffd0d0}.capwarn a{color:#ff9db0}
     .cap{font-size:11.5px;color:#7f8fb0;margin-top:8px}
+    .steps{display:none;margin-top:12px;background:#0d1426;border:1px solid #2b3a5e;border-radius:10px;padding:10px 12px}
+    .steps .hdr{font-size:12px;color:#cfe;margin-bottom:8px}
+    .step{display:flex;align-items:center;gap:9px;font-size:12.5px;padding:4px 0;color:#8b9cc0}
+    .step .dot{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:#24314f;color:#9fb0d0;flex:none}
+    .step.active{color:#e6ebf5}.step.active .dot{background:#2a6cf6;color:#fff}
+    .step.done{color:#9fe3bf}.step.done .dot{background:#16a06a;color:#fff}
+    .step.fail{color:#ff9db0}.step.fail .dot{background:#c0504d;color:#fff}
+    .step .sub{font-size:11px;color:#7f8fb0;display:block;margin-top:2px}
+    .stepAct{margin-top:12px}
+    .stepAct .go{width:100%;padding:11px;border:0;border-radius:9px;background:#2a6cf6;color:#fff;font-weight:700;font-size:14px;cursor:pointer}
+    .stepAct .go:disabled{opacity:.55;cursor:default}
+    .stepAct .go.retry{background:#c0504d}
+    .stepAct .hint{font-size:11.5px;color:#8b9cc0;margin-top:8px;text-align:center;line-height:1.5}
+    .stepAct .hint a{color:#8fb0ff}
+    .spin{display:inline-block;width:12px;height:12px;border:2px solid #cfe;border-top-color:transparent;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:6px}
+    @keyframes sp{to{transform:rotate(360deg)}}
     #submit{background:#16a06a;color:#fff;padding:13px;margin-top:14px;font-size:15px}
     #submit:disabled{background:#2a3a30;color:#6d8a7b;cursor:not-allowed}
     #status{margin-top:12px;font-size:13px;min-height:18px;color:#9fb0d0}
@@ -131,12 +147,20 @@
 
         <div class="swapnote" id="swapNote">
           <b>About swaps:</b> liquidity is provided by community members who earned it through past participation events — the platform provides no liquidity itself. Swaps route through a <b>third-party AMM (Uniswap)</b>, surfaced here for convenience and to help you avoid wrong or misleading pools. The platform charges <b>no fee and earns no profit</b> from this — all swap fees go to the liquidity providers. If you're unsure, swap directly at <a href="https://app.uniswap.org" target="_blank" rel="noopener">uniswap.org</a>. If you don't understand or don't agree, don't use this feature.
+          <br><br><b>Heads-up — this is a guided multi-step flow.</b> You'll approve each transaction one at a time in your wallet: <b>~3 for ETH</b> (swap → approve $PC → lock) and <b>up to 4 for USDC</b> (approve USDC → swap → approve $PC → lock). We confirm each step on-chain before showing the next, so you never sign against stale data.
         </div>
 
         <label class="fld" for="recipient">Your Pentagon Chain address (credited)</label>
         <input id="recipient" type="text" placeholder="0x…" autocomplete="off" />
 
-        <button id="submit" class="cta" type="submit">Top up</button>
+        <button id="submit" class="cta" type="submit">Review &amp; top up</button>
+
+        <div class="steps" id="steps">
+          <div class="hdr" id="stepsHdr"></div>
+          <div id="stepList"></div>
+          <div class="stepAct" id="stepAct"></div>
+        </div>
+
         <div id="status"></div>
         <div id="result"></div>
       </form>
