@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pentagon Chain · Top up $PC</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js" integrity="sha384-gpR0Q6Hx/O+uevlbpbANbS0LWjbejPV1sqD/8w422l/fW8whGY0EPmKw3uG7ACYP" crossorigin="anonymous"></script>
+  <style>
+    :root{color-scheme:light dark}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#0a0e1a;color:#e6ebf5;min-height:100vh}
+    a{color:#74a8ff;text-decoration:none}a:hover{text-decoration:underline}
+    .card{background:#121a2e;border:1px solid #243149;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+
+    /* ---- terms gate ---- */
+    #gate{position:fixed;inset:0;background:rgba(6,9,17,.92);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50;overflow:auto}
+    .gate-card{max-width:600px;width:100%;padding:26px;margin:auto}
+    .gate-card h1{font-size:20px;margin-bottom:8px}
+    .gate-card p{color:#9fb0d0;font-size:13.5px;line-height:1.6;margin-bottom:12px}
+    .banner{background:#2a1d10;border:1px solid #7a4d1a;border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.55;margin:14px 0;color:#ffd9a8}
+    .banner b{color:#ffb454}
+    ul.facts{list-style:none;display:grid;gap:9px;margin:6px 0}
+    ul.facts li{font-size:13px;line-height:1.5;padding-left:22px;position:relative;color:#cdd8ee}
+    ul.facts li::before{content:"→";position:absolute;left:2px;color:#5a86d6}
+    .not{background:#0d1426;border:1px solid #2b3a5e;border-radius:10px;padding:13px 14px;margin:14px 0}
+    .not h3{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#e08f8f;margin-bottom:7px}
+    .not li{font-size:12px;color:#b9a7a7;line-height:1.5;padding-left:18px;position:relative;list-style:none;margin-bottom:4px}
+    .not li::before{content:"✕";position:absolute;left:1px;color:#b5504d;font-size:10px}
+    .fine{font-size:11.5px;color:#6b7ba0;line-height:1.55}
+    label.chk{display:flex;gap:9px;align-items:center;font-size:13px;color:#cdd8ee;margin:16px 0 14px;cursor:pointer}
+    button.cta{width:100%;border:0;border-radius:11px;font-weight:700;cursor:pointer}
+    button.big{background:#2a6cf6;color:#fff;padding:15px;font-size:16px}
+    button.big:hover{background:#356ffb}
+
+    /* ---- app ---- */
+    #app{display:none;max-width:460px;margin:40px auto;padding:16px}
+    .head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px}
+    h2{font-size:18px}
+    .tag{font-size:11px;color:#9fb0d0}
+    .appcard{padding:20px;margin-top:12px}
+    #connect{background:#2a6cf6;color:#fff;padding:12px;margin-bottom:6px}
+    .paywith{display:flex;gap:6px;margin:6px 0 2px}
+    .paywith button{flex:1;background:#0d1426;border:1px solid #2b3a5e;color:#9fb0d0;border-radius:9px;padding:9px 0;font-size:13px;font-weight:600;cursor:pointer}
+    .paywith button.sel{background:#1c2b4a;border-color:#3a6fd6;color:#e6ebf5}
+    label.fld{display:block;font-size:12px;color:#9fb0d0;margin:14px 0 6px}
+    .row{display:flex;gap:8px}
+    input[type=text]{flex:1;background:#0d1426;border:1px solid #2b3a5e;color:#e6ebf5;padding:11px 12px;border-radius:10px;font-size:15px;width:100%}
+    #max{background:#243149;color:#cfe;border:0;border-radius:10px;padding:0 14px;cursor:pointer;font-weight:600}
+    .bal{font-size:12px;color:#9fb0d0;margin-top:6px}
+    .quote{background:#0d1a12;border:1px solid #1f5a3a;border-radius:10px;padding:11px 13px;margin-top:12px;font-size:13.5px;color:#9fe3bf;display:none}
+    .quote b{color:#c9ffe4}
+    .swapnote{display:none;background:#0d1426;border:1px solid #2b3a5e;border-radius:10px;padding:11px 13px;margin-top:12px;font-size:11.5px;line-height:1.55;color:#9fb0d0}
+    .swapnote b{color:#cdd8ee}
+    .capwarn{display:none;background:#2a1512;border:1px solid #7a2f2f;border-radius:10px;padding:11px 13px;margin-top:12px;font-size:12.5px;line-height:1.5;color:#ffb0b0}
+    .capwarn b{color:#ffd0d0}.capwarn a{color:#ff9db0}
+    .cap{font-size:11.5px;color:#7f8fb0;margin-top:8px}
+    #submit{background:#16a06a;color:#fff;padding:13px;margin-top:14px;font-size:15px}
+    #submit:disabled{background:#2a3a30;color:#6d8a7b;cursor:not-allowed}
+    #status{margin-top:12px;font-size:13px;min-height:18px;color:#9fb0d0}
+    #status.err{color:#ff8f8f}#status.ok{color:#58e08f}
+    #result{margin-top:10px;font-size:13px;line-height:1.55;color:#cdd8ee}
+    .appfine{font-size:11px;color:#6b7ba0;margin-top:14px;line-height:1.5}
+    #form{display:none}
+    code{color:#cfe}
+  </style>
+</head>
+<body>
+
+  <!-- ============ FIRST-RUN TERMS GATE ============ -->
+  <div id="gate">
+    <div class="gate-card card">
+      <h1>Pentagon Chain — $PC top-up</h1>
+      <p>Pentagon Chain is a <b>gamified ecosystem</b>. $PC is its <b>prepaid utility credit</b> — the same idea as an iTunes balance, Roblox Robux, or Twitch Bits: an access/gas credit you use <i>inside</i> the ecosystem.</p>
+
+      <div class="banner"><b>Notice:</b> following a recent, unintended exploit, the previous bridge is <b>fully locked</b>. This is the new, secured <b>one-way top-up</b> path — a 2-of-2 signed, on-chain, trustless flow with open visibility to everyone's status.</div>
+
+      <ul class="facts">
+        <li><b>One-way only</b> — you move $PC <i>into</i> the ecosystem; there is no user route back out to Ethereum.</li>
+        <li>The Ethereum $PC you top up is <b>locked permanently</b>; you receive an in-ecosystem credit.</li>
+        <li><b>Rewards for effort &amp; progress</b> (leaderboards, VIP tiers) are <b>funded separately</b>, on-chain and transparent.</li>
+      </ul>
+
+      <div class="not">
+        <h3>In-ecosystem $PC is NOT (PC tokenomics §09)</h3>
+        <li>Money or legal tender outside the platform</li>
+        <li>Redeemable for cash by the purchaser</li>
+        <li>Transferable to other participants, wallets, or platforms</li>
+        <li>Exchangeable back for the Ethereum-side $PC</li>
+        <li>An investment, deposit, or store of value</li>
+        <li>Listed on any major exchange (CEX/DEX), or guaranteed ever to be</li>
+        <li>Guaranteed convertible to outside value by any medium — there may currently be no way to move $PC value off Pentagon Chain</li>
+      </div>
+
+      <p class="fine">By continuing you confirm you've read the <a href="https://pentagon.games/PCtokenomics#not" target="_blank" rel="noopener">$PC tokenomics &amp; community guide</a>. Think prepaid top-up card / arcade credits — value is in the play, not in resale.</p>
+      <p class="fine" style="margin-top:8px">$PC works like a loyalty / rewards points program — think Starbucks Stars, airline miles, or membership points: its value is in what it unlocks <b>inside</b> Pentagon Chain, not in resale. It is <b>not listed on any major exchange</b>, and there may currently be <b>no way to convert it to value outside Pentagon Chain</b> by any medium. For more information, read the <a href="https://pentagon.games/PCtokenomics#not" target="_blank" rel="noopener">tokenomics</a>.</p>
+      <p class="fine" style="margin-top:8px">Do not use this service if you are a citizen or resident of, or located in, any jurisdiction where acquiring or holding such tokens is restricted or prohibited, or if you are unsure of your eligibility. If you don't understand or don't agree with these terms, do not proceed.</p>
+
+      <label class="chk"><input type="checkbox" id="dontshow" checked /> Don't show this again</label>
+      <button id="agree" class="cta big">I agree, understand and continue</button>
+    </div>
+  </div>
+
+  <!-- ============ APP ============ -->
+  <div id="app">
+    <div class="head">
+      <h2>Top up $PC</h2>
+      <span class="tag">one-way · <a href="#" id="showterms">terms</a></span>
+    </div>
+    <div class="appcard card">
+      <button id="connect" class="cta">Connect Wallet</button>
+
+      <form id="form">
+        <label class="fld">Pay with</label>
+        <div class="paywith" id="paywith">
+          <button type="button" data-pay="PC" class="sel">$PC</button>
+          <button type="button" data-pay="ETH">ETH</button>
+          <button type="button" data-pay="USDC">USDC</button>
+        </div>
+
+        <label class="fld" for="amount">Amount (<span id="payLabel">$PC</span>)</label>
+        <div class="row">
+          <input id="amount" type="text" inputmode="decimal" placeholder="0.0" autocomplete="off" />
+          <button type="button" id="max">Max</button>
+        </div>
+        <div class="bal">Balance: <span id="balance">–</span></div>
+
+        <div class="quote" id="quote"></div>
+        <div class="capwarn" id="capWarn"></div>
+        <div class="cap" id="capacity"></div>
+
+        <div class="swapnote" id="swapNote">
+          <b>About swaps:</b> liquidity is provided by community members who earned it through past participation events — the platform provides no liquidity itself. Swaps route through a <b>third-party AMM (Uniswap)</b>, surfaced here for convenience and to help you avoid wrong or misleading pools. The platform charges <b>no fee and earns no profit</b> from this — all swap fees go to the liquidity providers. If you're unsure, swap directly at <a href="https://app.uniswap.org" target="_blank" rel="noopener">uniswap.org</a>. If you don't understand or don't agree, don't use this feature.
+        </div>
+
+        <label class="fld" for="recipient">Your Pentagon Chain address (credited)</label>
+        <input id="recipient" type="text" placeholder="0x…" autocomplete="off" />
+
+        <button id="submit" class="cta" type="submit">Top up</button>
+        <div id="status"></div>
+        <div id="result"></div>
+      </form>
+
+      <p class="appfine">One-way top-up · in-ecosystem $PC has no cash value, is non-transferable &amp; non-refundable · <a href="#" id="showterms2">full terms</a>. Confirm you're on the official Pentagon Games domain.</p>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
