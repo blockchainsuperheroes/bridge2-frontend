@@ -350,22 +350,20 @@ async function runStep(i) {
   let tx;
   try { tx = await s.run(); }
   catch (err) { s.state = 'fail'; renderSteps(); stepFail(i, err, { retry: true }); return; }
-  try {
-    if (tx && tx.wait) { if (tx.hash) s.hash = tx.hash; setHint(spin('Submitted — waiting for network confirmation…')); s.receipt = await tx.wait(); }
-  } catch (err) {
-    // the tx may still have landed; offer the safe "Check again" as well as Retry
-    s.state = 'fail'; renderSteps(); stepFail(i, err, { retry: true, recheck: true });
-    return;
-  }
+  if (tx && tx.hash) s.hash = tx.hash;
+  // NOTE: we intentionally do NOT `await tx.wait()`. MetaMask's provider can
+  // stall waiting for a block event even after the tx mines, hanging the UI.
+  // Instead verifyStep() polls chain state (allowance/balance/receipt) directly.
+  setHint(spin('Submitted — confirming on-chain…'));
   await verifyStep(i);
 }
 
 async function verifyStep(i) {
   const s = flow.steps[i];
-  s.state = 'verifying'; renderSteps(); setHint(spin('Confirming on-chain…'));
+  s.state = 'verifying'; renderSteps(); setHint(spin('Confirming on-chain… this can take a minute on Ethereum.'));
   let ok = false;
-  for (let k = 0; k < 20; k++) { try { if (await s.verify(s.receipt)) { ok = true; break; } } catch {} await sleep(1800); }
-  if (!ok) { s.state = 'fail'; renderSteps(); stepFail(i, new Error('Transaction confirmed, but the on-chain state hasn\'t updated yet (network lag).'), { recheck: true }); return; }
+  for (let k = 0; k < 60; k++) { try { if (await s.verify(s.receipt)) { ok = true; break; } } catch {} await sleep(3000); } // ~3 min window
+  if (!ok) { s.state = 'fail'; renderSteps(); stepFail(i, new Error('Not confirmed yet — the transaction may still be mining, or it may have failed.'), { recheck: true, retry: true }); return; }
   s.state = 'done'; renderSteps();
   flow.i = i + 1;
   if (flow.i < flow.steps.length) prepareStep(flow.i); else await finalize();
