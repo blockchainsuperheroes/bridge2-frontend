@@ -112,6 +112,13 @@
     .tstep.done .tbar-f{background:#16a06a}
     .tstep-s{font-size:11.5px;color:#8b9cc0;line-height:1.5}
     .tstep-s a{color:#8fb0ff}
+    .resumebox{display:none;background:#1a2233;border:1px solid #3a5a8f;border-radius:10px;padding:11px 13px;margin-bottom:12px;font-size:12.5px;color:#cdd8ee;line-height:1.55}
+    .resumebox b{color:#e6ebf5}.resumebox code{color:#9fe3bf}
+    .resumebox button{margin-top:9px;padding:7px 12px;border:0;border-radius:8px;background:#2a6cf6;color:#fff;font-weight:600;font-size:12.5px;cursor:pointer}
+    .resumebox button.ghost{background:transparent;border:1px solid #3a5a8f;color:#9fb0d0;margin-left:6px}
+    .hpending{border:1px solid #3a5a8f;background:#1a2233;border-radius:10px;padding:10px 12px;margin-bottom:9px;font-size:12.5px;color:#cdd8ee;line-height:1.5}
+    .hpending b{color:#e6ebf5}
+    .hpending button{margin-top:8px;padding:6px 11px;border:0;border-radius:8px;background:#2a6cf6;color:#fff;font-weight:600;font-size:12px;cursor:pointer}
   </style>
 </head>
 <body>
@@ -170,6 +177,8 @@
       </div>
 
       <button id="connect" class="cta">Connect Wallet</button>
+
+      <div id="resume" class="resumebox"></div>
 
       <form id="form">
         <label class="fld">Pay with</label>

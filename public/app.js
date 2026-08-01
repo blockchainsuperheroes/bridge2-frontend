@@ -2,6 +2,7 @@
 const CFG = window.BRIDGE2_CONFIG;
 const AGREED_KEY = 'pc_topup_agreed_v1';
 const HISTORY_KEY = 'pc_topup_history_v1';
+const PENDING_KEY = 'pc_topup_pending_v1';
 
 const ERC20 = [
   'function balanceOf(address) view returns (uint256)',
@@ -68,8 +69,14 @@ function saveHistoryEntry(entry) {
 function renderHistory() {
   const el = $('historyList'); if (!el) return;
   const a = loadHistory();
-  if (!a.length) { el.innerHTML = '<div class="hempty">No top-ups recorded on this device yet.</div>'; return; }
-  el.innerHTML = a.map(e => {
+  const p = loadPending();
+  let pendingHtml = '';
+  if (pendingResumable(p)) {
+    const amt = fmtPC(BigInt(p.pcToDeposit));
+    pendingHtml = `<div class="hpending"><b>⏳ In progress</b> — ~${amt} $PC ready, not yet locked${p.recipient ? ` for ${shortA(p.recipient)}` : ''}.<br><button type="button" id="resumeGo2">Resume &amp; lock</button></div>`;
+  }
+  if (!a.length && !pendingHtml) { el.innerHTML = '<div class="hempty">No top-ups recorded on this device yet.</div>'; return; }
+  el.innerHTML = pendingHtml + a.map(e => {
     const pc = (+e.pc).toLocaleString(undefined, { maximumFractionDigits: 4 });
     const amt = (+e.amountIn).toLocaleString(undefined, { maximumFractionDigits: 6 });
     let when = e.t; try { when = new Date(e.t).toLocaleString(); } catch {}
@@ -81,6 +88,7 @@ function renderHistory() {
       + `<div class="r2">Paid ${amt} ${esc(e.payWith)} · ${esc(when)}</div>`
       + `<div class="r2">To ${e.recipient ? shortA(e.recipient) : '—'} · ${txLink}${sep}${credLink}</div></div>`;
   }).join('');
+  const rg = $('resumeGo2'); if (rg) rg.onclick = resumePending;
 }
 function showTab(which) {
   const hist = which === 'history';
@@ -95,6 +103,47 @@ function clearHistory() {
   if (!confirm('Clear your top-up history on this device? This cannot be undone. Your on-chain transactions are not affected.')) return;
   localStorage.removeItem(HISTORY_KEY);
   renderHistory();
+}
+
+/* ---------------- resumable (interrupted) top-up ----------------
+   If a flow is interrupted after the swap (PC already in the wallet) but
+   before the lock, we persist it so the user can resume — locking the $PC
+   they already hold — instead of starting over (and never double-swapping). */
+function loadPending() { try { return JSON.parse(localStorage.getItem(PENDING_KEY) || 'null'); } catch { return null; } }
+function savePending(p) { try { localStorage.setItem(PENDING_KEY, JSON.stringify(p)); } catch {} }
+function clearPending() { try { localStorage.removeItem(PENDING_KEY); } catch {} renderResume(); renderHistory(); }
+function pendingResumable(p) { return !!(p && p.pcToDeposit && p.pcToDeposit !== '0' && !(p.done || []).includes('LOCK')); }
+
+function renderResume() {
+  const el = $('resume'); if (!el) return;
+  const p = loadPending();
+  if (!pendingResumable(p)) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  const amt = fmtPC(BigInt(p.pcToDeposit));
+  el.style.display = 'block';
+  el.innerHTML = `<b>⏳ Unfinished top-up.</b> You have ~<b>${amt} $PC</b> ready but <b>not yet locked</b>${p.recipient ? ` for <code>${shortA(p.recipient)}</code>` : ''}. Finish it — this only locks the $PC you already hold (no new swap).<br>`
+    + `<button type="button" id="resumeGo">Resume &amp; lock</button><button type="button" id="resumeX" class="ghost">Discard</button>`;
+  $('resumeGo').onclick = resumePending;
+  $('resumeX').onclick = () => { if (confirm('Discard this unfinished top-up? Your swapped $PC stays in your wallet — you can bridge it later with the $PC option.')) clearPending(); };
+}
+
+async function resumePending() {
+  const p = loadPending(); if (!p) return;
+  if (!account) { status('Connect your wallet first, then Resume.', 'err'); return; }
+  showTab('topup');
+  payWith = 'PC';
+  [...$('paywith').children].forEach(x => x.classList.toggle('sel', x.dataset.pay === 'PC'));
+  $('payLabel').textContent = 'PC';
+  $('swapNote').style.display = 'none';
+  $('submit').textContent = 'Review & top up';
+  if (p.recipient) $('recipient').value = p.recipient;
+  let bal = 0n;
+  try { bal = await new ethers.Contract(CFG.pcTokenAddress, ERC20, provider).balanceOf(account); } catch {}
+  const want = BigInt(p.pcToDeposit);
+  const use = (bal > 0n && bal < want) ? bal : want; // cap to what's actually in the wallet
+  $('amount').value = ethers.formatUnits(use, 18);
+  await refreshBalance(); await refreshQuote(); checkCapacity();
+  status('Resuming — review the amount and lock your $PC below.', '');
+  $('amount').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 /* ---------------- wallet ---------------- */
@@ -115,6 +164,7 @@ async function connect() {
   $('connect').textContent = account.slice(0, 6) + '…' + account.slice(-4);
   $('form').style.display = 'block';
   if (!$('recipient').value) $('recipient').value = account;
+  renderResume();
   await refreshBalance();
   await refreshPool();
   if (!window._poolTimer) window._poolTimer = setInterval(refreshPool, 30000);
@@ -305,6 +355,12 @@ async function startFlow(e) {
     resetFlow();
     const { steps, ctx } = await buildPlan();
     flow = { steps, ctx, i: 0 };
+    flow._pending = {
+      account: account || '', recipient, payWith, amountIn: amtStr,
+      pcToDeposit: payWith === 'PC' ? ctx.pcToDeposit.toString() : null, // known upfront for $PC; set after swap otherwise
+      done: [], updatedAt: Date.now(),
+    };
+    savePending(flow._pending);
     $('submit').style.display = 'none';
     $('steps').style.display = 'block';
     renderSteps();
@@ -365,6 +421,12 @@ async function verifyStep(i) {
   for (let k = 0; k < 60; k++) { try { if (await s.verify(s.receipt)) { ok = true; break; } } catch {} await sleep(3000); } // ~3 min window
   if (!ok) { s.state = 'fail'; renderSteps(); stepFail(i, new Error('Not confirmed yet — the transaction may still be mining, or it may have failed.'), { recheck: true, retry: true }); return; }
   s.state = 'done'; renderSteps();
+  if (flow._pending) { // persist progress so an interrupted flow can resume
+    flow._pending.done.push(s.code);
+    if (s.code === 'SWAP') flow._pending.pcToDeposit = flow.ctx.pcToDeposit.toString();
+    flow._pending.updatedAt = Date.now();
+    savePending(flow._pending);
+  }
   flow.i = i + 1;
   if (flow.i < flow.steps.length) prepareStep(flow.i); else await finalize();
 }
@@ -434,6 +496,7 @@ async function finalize() {
     });
     if ($('historyPanel').style.display === 'block') renderHistory();
   } catch {}
+  clearPending(); // completed — no longer resumable
   $('stepAct').innerHTML = '';
   $('result').innerHTML =
     `<div class="tracker">`
@@ -519,6 +582,7 @@ function startTracker(ctx) {
 window.addEventListener('DOMContentLoaded', () => {
   $('tosbox')?.addEventListener('scroll', checkTosScroll);
   showGate(false);
+  renderResume();
   $('agree').addEventListener('click', agree);
   $('showterms').addEventListener('click', (e) => { e.preventDefault(); showGate(true); });
   $('showterms2').addEventListener('click', (e) => { e.preventDefault(); showGate(true); });
