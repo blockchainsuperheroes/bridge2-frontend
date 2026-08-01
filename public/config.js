@@ -23,8 +23,9 @@ window.BRIDGE2_CONFIG = {
   // Optional: server-side endpoint reporting whether a deposit was paid out on
   // Pentagon Chain (browser can't read PC RPC — no CORS). Reads PCPayout.processed().
   //   GET <statusUrl>?depositId=&srcChainId=&srcVault=  ->  { credited, claimTx?, amount? }
+  // Served same-origin by the Cloudflare Pages Function at functions/bridge/status.js.
   // Empty => the post-lock tracker shows ETH confirmations + an explorer link only.
-  statusUrl: '',
+  statusUrl: '/bridge/status',
   pcExplorerBase: 'https://explorer.pentagon.games',
   explorerBase: 'https://etherscan.io',
   minConfirmationsNote: 12,

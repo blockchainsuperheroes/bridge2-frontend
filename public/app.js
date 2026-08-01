@@ -81,12 +81,15 @@ function renderHistory() {
     const amt = (+e.amountIn).toLocaleString(undefined, { maximumFractionDigits: 6 });
     let when = e.t; try { when = new Date(e.t).toLocaleString(); } catch {}
     const idTxt = (e.depositId != null && e.depositId !== '') ? `deposit #${e.depositId}` : '';
-    const txLink = e.tx ? `<a target="_blank" rel="noopener" href="${CFG.explorerBase}/tx/${e.tx}">ETH tx</a>` : '';
-    const credLink = e.recipient ? `<a target="_blank" rel="noopener" href="${CFG.pcExplorerBase}/address/${e.recipient}">credited →</a>` : '';
-    const sep = txLink && credLink ? ' · ' : '';
+    const txLink = e.tx ? `<a target="_blank" rel="noopener" href="${CFG.explorerBase}/tx/${e.tx}">ETH lock tx</a>` : '';
+    let pcLink;
+    if (e.claimTx) pcLink = `<a target="_blank" rel="noopener" href="${CFG.pcExplorerBase}/tx/${e.claimTx}">PC payout tx →</a>`;
+    else if (e.credited) pcLink = e.recipient ? `<a target="_blank" rel="noopener" href="${CFG.pcExplorerBase}/address/${e.recipient}">credited →</a>` : '<span style="color:#9fe3bf">credited</span>';
+    else pcLink = `<span style="color:#c9a86a">PC payout pending</span>${e.recipient ? ` · <a target="_blank" rel="noopener" href="${CFG.pcExplorerBase}/address/${e.recipient}">track →</a>` : ''}`;
+    const sep = txLink ? ' · ' : '';
     return `<div class="hitem"><div class="r1"><b>${pc} $PC</b><span class="id">${idTxt}</span></div>`
       + `<div class="r2">Paid ${amt} ${esc(e.payWith)} · ${esc(when)}</div>`
-      + `<div class="r2">To ${e.recipient ? shortA(e.recipient) : '—'} · ${txLink}${sep}${credLink}</div></div>`;
+      + `<div class="r2">To ${e.recipient ? shortA(e.recipient) : '—'} · ${txLink}${sep}${pcLink}</div></div>`;
   }).join('');
   const rg = $('resumeGo2'); if (rg) rg.onclick = resumePending;
 }
@@ -97,12 +100,42 @@ function showTab(which) {
   $('historyPanel').style.display = hist ? 'block' : 'none';
   $('connect').style.display = hist ? 'none' : '';
   $('form').style.display = (!hist && account) ? 'block' : 'none';
-  if (hist) renderHistory();
+  if (hist) { renderHistory(); backfillHistory(); }
 }
 function clearHistory() {
   if (!confirm('Clear your top-up history on this device? This cannot be undone. Your on-chain transactions are not affected.')) return;
   localStorage.removeItem(HISTORY_KEY);
   renderHistory();
+}
+// Fill in the Pentagon Chain payout tx on the matching history entry.
+function markHistoryCredited(ethTx, claimTx) {
+  try {
+    const a = loadHistory(); let changed = false;
+    for (const e of a) if (e.tx && e.tx === ethTx) {
+      if (!e.credited) { e.credited = true; changed = true; }
+      if (claimTx && e.claimTx !== claimTx) { e.claimTx = claimTx; changed = true; }
+    }
+    if (changed) { localStorage.setItem(HISTORY_KEY, JSON.stringify(a)); if ($('historyPanel').style.display === 'block') renderHistory(); }
+  } catch {}
+}
+// Backfill credit status / payout tx for past entries when the History tab opens.
+async function backfillHistory() {
+  if (!CFG.statusUrl) return;
+  const a = loadHistory(); let changed = false;
+  const srcChainId = String(parseInt(CFG.ethChainIdHex, 16) || 1);
+  for (const e of a) {
+    if (e.claimTx || e.depositId == null || e.depositId === '') continue;
+    try {
+      const u = new URL(CFG.statusUrl, location.href);
+      u.searchParams.set('depositId', e.depositId);
+      u.searchParams.set('srcChainId', srcChainId);
+      u.searchParams.set('srcVault', CFG.vaultAddress);
+      const j = await (await fetch(u, { cache: 'no-store' })).json();
+      if (j && j.credited && !e.credited) { e.credited = true; changed = true; }
+      if (j && j.claimTx && e.claimTx !== j.claimTx) { e.claimTx = j.claimTx; changed = true; }
+    } catch {}
+  }
+  if (changed) { localStorage.setItem(HISTORY_KEY, JSON.stringify(a)); renderHistory(); }
 }
 
 /* ---------------- resumable (interrupted) top-up ----------------
@@ -493,6 +526,8 @@ async function finalize() {
       pc: ethers.formatUnits(ctx.pcToDeposit, 18),
       depositId: ctx.depositId ?? null,
       tx: ctx.depositTx || '',
+      credited: false, // set true + claimTx filled when the PC payout is detected
+      claimTx: null,
     });
     if ($('historyPanel').style.display === 'block') renderHistory();
   } catch {}
@@ -523,7 +558,7 @@ function startTracker(ctx) {
   clearInterval(window._track);
   const target = CFG.minConfirmationsNote || 12;
   const srcChainId = parseInt(CFG.ethChainIdHex, 16) || 1;
-  let ethDone = false, pcDone = false, pcAnnounced = false, ticks = 0;
+  let ethDone = false, pcDone = false, pcAnnounced = false, ticks = 0, pcFails = 0;
   const stop = () => { clearInterval(window._track); window._track = null; };
   const tick = async () => {
     if (++ticks > 360) { // ~30 min safety stop
@@ -549,22 +584,31 @@ function startTracker(ctx) {
       }
       if (ethDone && !pcDone) {
         if (CFG.statusUrl) {
-          if (!pcAnnounced) { pcAnnounced = true; const s = $('tPcS'); if (s) s.innerHTML = `<span class="spin"></span>Confirmed — waiting for the bridge to release $PC…`; }
-          const u = new URL(CFG.statusUrl, location.href);
-          u.searchParams.set('depositId', ctx.depositId ?? '');
-          u.searchParams.set('srcChainId', String(srcChainId));
-          u.searchParams.set('srcVault', CFG.vaultAddress);
-          const j = await (await fetch(u, { cache: 'no-store' })).json();
+          if (!pcAnnounced) { pcAnnounced = true; const s = $('tPcS'); if (s) s.innerHTML = `<span class="spin"></span>Confirmed — waiting for the bridge to release $PC (keeper + verifier 2-of-2 sign)…`; }
+          let j = null;
+          try {
+            const u = new URL(CFG.statusUrl, location.href);
+            u.searchParams.set('depositId', ctx.depositId ?? '');
+            u.searchParams.set('srcChainId', String(srcChainId));
+            u.searchParams.set('srcVault', CFG.vaultAddress);
+            j = await (await fetch(u, { cache: 'no-store' })).json();
+            pcFails = 0;
+          } catch { pcFails++; }
           if (j && j.credited) {
             pcDone = true; stop();
             $('tPc')?.classList.add('done');
+            markHistoryCredited(ctx.depositTx, j.claimTx); // record the payout tx in History
             const link = j.claimTx
-              ? ` <a target="_blank" rel="noopener" href="${CFG.pcExplorerBase}/tx/${j.claimTx}">payout tx</a>`
+              ? ` <a target="_blank" rel="noopener" href="${CFG.pcExplorerBase}/tx/${j.claimTx}">payout tx →</a>`
               : ` <a target="_blank" rel="noopener" href="${CFG.pcExplorerBase}/address/${ctx.recipient}">view on explorer</a>`;
             const amt = j.amount ? fmtPC(BigInt(j.amount)) : fmtPC(ctx.pcToDeposit);
             const s = $('tPcS'); if (s) s.innerHTML = `<span style="color:#58e08f">✅ Credited ${amt} $PC on ${CFG.pcChainName}.</span>${link}`;
             status('Credited on Pentagon Chain. 🎉', 'ok');
             await refreshBalance();
+          } else if (pcFails >= 5) {
+            pcDone = true; stop(); // endpoint unreachable — degrade to the explorer link
+            const s = $('tPcS');
+            if (s) s.innerHTML = `Confirmed on ${CFG.ethChainName}. We couldn't auto-detect the ${CFG.pcChainName} release just now — <a target="_blank" rel="noopener" href="${CFG.pcExplorerBase}/address/${ctx.recipient}">track your address on the explorer →</a>.`;
           }
         } else {
           pcDone = true; stop(); // no backend → can't poll PC from the browser
