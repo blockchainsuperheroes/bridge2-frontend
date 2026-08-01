@@ -20,6 +20,11 @@ window.BRIDGE2_CONFIG = {
   // Point this at a small PG-be endpoint that returns {"balanceWei":"<native PC wei>"}.
   // Empty => capacity check disabled (fails open; on-chain safety still applies).
   capacityUrl: '',
+  // Optional: server-side endpoint reporting whether a deposit was paid out on
+  // Pentagon Chain (browser can't read PC RPC — no CORS). Reads PCPayout.processed().
+  //   GET <statusUrl>?depositId=&srcChainId=&srcVault=  ->  { credited, claimTx?, amount? }
+  // Empty => the post-lock tracker shows ETH confirmations + an explorer link only.
+  statusUrl: '',
   pcExplorerBase: 'https://explorer.pentagon.games',
   explorerBase: 'https://etherscan.io',
   minConfirmationsNote: 12,

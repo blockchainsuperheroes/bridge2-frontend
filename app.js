@@ -205,6 +205,7 @@ const spin = (t) => `<span class="spin"></span>${t}`;
 const esc = (s) => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 
 function resetFlow() {
+  clearInterval(window._track); window._track = null;
   flow = { steps: [], i: 0, ctx: {} };
   $('steps').style.display = 'none';
   $('stepsHdr').innerHTML = ''; $('stepList').innerHTML = ''; $('stepAct').innerHTML = '';
@@ -437,13 +438,83 @@ async function finalize() {
   } catch {}
   $('stepAct').innerHTML = '';
   $('result').innerHTML =
-    `✅ Locked <b>${pcAmt} $PC</b>${idTxt}.<br>` +
-    (ctx.depositTx ? `Tx: <a target="_blank" href="${CFG.explorerBase}/tx/${ctx.depositTx}">${ctx.depositTx.slice(0, 10)}…</a><br>` : '') +
-    `In-ecosystem $PC will be credited to <code>${shortA(ctx.recipient)}</code> on ${CFG.pcChainName} after ~${CFG.minConfirmationsNote} confirmations. ` +
-    `<a target="_blank" href="${CFG.pcExplorerBase}/address/${ctx.recipient}">Track</a>.`;
-  status('All steps complete — top-up locked in. 🎉', 'ok');
+    `<div class="tracker">`
+    + `<div class="tline">✅ Locked <b>${pcAmt} $PC</b>${idTxt} for <code>${shortA(ctx.recipient)}</code>`
+    + (ctx.depositTx ? ` · <a target="_blank" rel="noopener" href="${CFG.explorerBase}/tx/${ctx.depositTx}">Ethereum tx</a>` : '') + `</div>`
+    + `<div class="tstep" id="tEth"><div class="tstep-h">① Confirming on ${CFG.ethChainName}</div>`
+    + `<div class="tbar"><div class="tbar-f" id="tEthBar"></div></div>`
+    + `<div class="tstep-s" id="tEthS">Waiting for the lock to be mined…</div></div>`
+    + `<div class="tstep" id="tPc"><div class="tstep-h">② Releasing $PC on ${CFG.pcChainName}</div>`
+    + `<div class="tstep-s" id="tPcS">Starts automatically once ${CFG.ethChainName} confirmations complete.</div></div>`
+    + `</div>`;
+  status('Locked in. Tracking the release below — safe to leave this open.', 'ok');
   $('submit').style.display = ''; $('submit').disabled = false;
+  startTracker(ctx);
   await refreshBalance(); await refreshPool();
+}
+
+const fmtEta = (s) => { s = Math.max(0, Math.round(s)); return s < 60 ? `${s}s` : `${Math.ceil(s / 60)} min`; };
+
+/* Live post-lock tracker: ETH confirmations (client-side) then PC credit
+   (via CFG.statusUrl if configured; otherwise an explorer link, since the
+   browser can't read Pentagon Chain directly — no CORS). */
+function startTracker(ctx) {
+  clearInterval(window._track);
+  const target = CFG.minConfirmationsNote || 12;
+  const srcChainId = parseInt(CFG.ethChainIdHex, 16) || 1;
+  let ethDone = false, pcDone = false, pcAnnounced = false, ticks = 0;
+  const stop = () => { clearInterval(window._track); window._track = null; };
+  const tick = async () => {
+    if (++ticks > 360) { // ~30 min safety stop
+      if (!pcDone) { const s = $('tPcS'); if (s) s.innerHTML = `Still processing — track your address on the explorer: <a target="_blank" rel="noopener" href="${CFG.pcExplorerBase}/address/${ctx.recipient}">open →</a>.`; }
+      stop(); return;
+    }
+    try {
+      if (!ethDone) {
+        const rc = ctx.depositTx ? await provider.getTransactionReceipt(ctx.depositTx) : null;
+        if (rc && rc.blockNumber != null) {
+          const head = await provider.getBlockNumber();
+          const conf = Math.max(0, head - rc.blockNumber + 1);
+          const bar = $('tEthBar'); if (bar) bar.style.width = Math.min(100, Math.round(conf / target * 100)) + '%';
+          const s = $('tEthS');
+          if (conf >= target) {
+            ethDone = true;
+            $('tEth')?.classList.add('done');
+            if (s) s.innerHTML = `<span style="color:#58e08f">✓ Confirmed on ${CFG.ethChainName} (${conf} confirmations).</span>`;
+          } else if (s) {
+            s.textContent = `${conf} / ${target} confirmations · ~${fmtEta((target - conf) * 12)} remaining`;
+          }
+        } else { const s = $('tEthS'); if (s) s.textContent = 'Waiting for the lock transaction to be mined…'; }
+      }
+      if (ethDone && !pcDone) {
+        if (CFG.statusUrl) {
+          if (!pcAnnounced) { pcAnnounced = true; const s = $('tPcS'); if (s) s.innerHTML = `<span class="spin"></span>Confirmed — waiting for the bridge to release $PC…`; }
+          const u = new URL(CFG.statusUrl, location.href);
+          u.searchParams.set('depositId', ctx.depositId ?? '');
+          u.searchParams.set('srcChainId', String(srcChainId));
+          u.searchParams.set('srcVault', CFG.vaultAddress);
+          const j = await (await fetch(u, { cache: 'no-store' })).json();
+          if (j && j.credited) {
+            pcDone = true; stop();
+            $('tPc')?.classList.add('done');
+            const link = j.claimTx
+              ? ` <a target="_blank" rel="noopener" href="${CFG.pcExplorerBase}/tx/${j.claimTx}">payout tx</a>`
+              : ` <a target="_blank" rel="noopener" href="${CFG.pcExplorerBase}/address/${ctx.recipient}">view on explorer</a>`;
+            const amt = j.amount ? fmtPC(BigInt(j.amount)) : fmtPC(ctx.pcToDeposit);
+            const s = $('tPcS'); if (s) s.innerHTML = `<span style="color:#58e08f">✅ Credited ${amt} $PC on ${CFG.pcChainName}.</span>${link}`;
+            status('Credited on Pentagon Chain. 🎉', 'ok');
+            await refreshBalance();
+          }
+        } else {
+          pcDone = true; stop(); // no backend → can't poll PC from the browser
+          const s = $('tPcS');
+          if (s) s.innerHTML = `Confirmed on ${CFG.ethChainName}. The bridge releases your $PC on ${CFG.pcChainName} automatically (usually a minute or two). Your browser can't read ${CFG.pcChainName} directly, so <a target="_blank" rel="noopener" href="${CFG.pcExplorerBase}/address/${ctx.recipient}">track your address on the explorer →</a>.`;
+        }
+      }
+    } catch { /* transient RPC error — keep polling */ }
+  };
+  tick();
+  window._track = setInterval(tick, 5000);
 }
 
 /* ---------------- wiring ---------------- */
