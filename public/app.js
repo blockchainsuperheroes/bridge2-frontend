@@ -83,7 +83,7 @@ function renderHistory() {
     const idTxt = (e.depositId != null && e.depositId !== '') ? `deposit #${e.depositId}` : '';
     const txLink = e.tx ? `<a target="_blank" rel="noopener" href="${CFG.explorerBase}/tx/${e.tx}">ETH lock tx</a>` : '';
     let pcLink;
-    if (e.claimTx) pcLink = `<a target="_blank" rel="noopener" href="${CFG.pcExplorerBase}/tx/${e.claimTx}">PC payout tx →</a>`;
+    if (e.claimTx) pcLink = `<a target="_blank" rel="noopener" href="${CFG.pcExplorerBase}/tx/${e.claimTx}?tab=internal_txns">PC payout tx →</a>`;
     else if (e.credited) pcLink = e.recipient ? `<a target="_blank" rel="noopener" href="${CFG.pcExplorerBase}/address/${e.recipient}">credited →</a>` : '<span style="color:#9fe3bf">credited</span>';
     else pcLink = `<span style="color:#c9a86a">PC payout pending</span>${e.recipient ? ` · <a target="_blank" rel="noopener" href="${CFG.pcExplorerBase}/address/${e.recipient}">track →</a>` : ''}`;
     const sep = txLink ? ' · ' : '';
@@ -599,7 +599,7 @@ function startTracker(ctx) {
             $('tPc')?.classList.add('done');
             markHistoryCredited(ctx.depositTx, j.claimTx); // record the payout tx in History
             const link = j.claimTx
-              ? ` <a target="_blank" rel="noopener" href="${CFG.pcExplorerBase}/tx/${j.claimTx}">payout tx →</a>`
+              ? ` <a target="_blank" rel="noopener" href="${CFG.pcExplorerBase}/tx/${j.claimTx}?tab=internal_txns">payout tx →</a>`
               : ` <a target="_blank" rel="noopener" href="${CFG.pcExplorerBase}/address/${ctx.recipient}">view on explorer</a>`;
             const amt = j.amount ? fmtPC(BigInt(j.amount)) : fmtPC(ctx.pcToDeposit);
             const s = $('tPcS'); if (s) s.innerHTML = `<span style="color:#58e08f">✅ Credited ${amt} $PC on ${CFG.pcChainName}.</span>${link}`;
