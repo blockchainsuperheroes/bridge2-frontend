@@ -1,6 +1,7 @@
 /* Pentagon Chain $PC top-up — one-way bridge with optional swap-and-bridge (Uniswap v2). */
 const CFG = window.BRIDGE2_CONFIG;
 const AGREED_KEY = 'pc_topup_agreed_v1';
+const HISTORY_KEY = 'pc_topup_history_v1';
 
 const ERC20 = [
   'function balanceOf(address) view returns (uint256)',
@@ -57,6 +58,43 @@ function agree() {
   if ($('dontshow').checked) localStorage.setItem(AGREED_KEY, '1');
   else localStorage.removeItem(AGREED_KEY);
   enterApp();
+}
+
+/* ---------------- history (browser-local only) ---------------- */
+function loadHistory() { try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch { return []; } }
+function saveHistoryEntry(entry) {
+  try { const a = loadHistory(); a.unshift(entry); if (a.length > 100) a.length = 100; localStorage.setItem(HISTORY_KEY, JSON.stringify(a)); } catch {}
+}
+function renderHistory() {
+  const el = $('historyList'); if (!el) return;
+  const a = loadHistory();
+  if (!a.length) { el.innerHTML = '<div class="hempty">No top-ups recorded on this device yet.</div>'; return; }
+  el.innerHTML = a.map(e => {
+    const pc = (+e.pc).toLocaleString(undefined, { maximumFractionDigits: 4 });
+    const amt = (+e.amountIn).toLocaleString(undefined, { maximumFractionDigits: 6 });
+    let when = e.t; try { when = new Date(e.t).toLocaleString(); } catch {}
+    const idTxt = (e.depositId != null && e.depositId !== '') ? `deposit #${e.depositId}` : '';
+    const txLink = e.tx ? `<a target="_blank" rel="noopener" href="${CFG.explorerBase}/tx/${e.tx}">ETH tx</a>` : '';
+    const credLink = e.recipient ? `<a target="_blank" rel="noopener" href="${CFG.pcExplorerBase}/address/${e.recipient}">credited →</a>` : '';
+    const sep = txLink && credLink ? ' · ' : '';
+    return `<div class="hitem"><div class="r1"><b>${pc} $PC</b><span class="id">${idTxt}</span></div>`
+      + `<div class="r2">Paid ${amt} ${esc(e.payWith)} · ${esc(when)}</div>`
+      + `<div class="r2">To ${e.recipient ? shortA(e.recipient) : '—'} · ${txLink}${sep}${credLink}</div></div>`;
+  }).join('');
+}
+function showTab(which) {
+  const hist = which === 'history';
+  $('tabTopup').classList.toggle('sel', !hist);
+  $('tabHistory').classList.toggle('sel', hist);
+  $('historyPanel').style.display = hist ? 'block' : 'none';
+  $('connect').style.display = hist ? 'none' : '';
+  $('form').style.display = (!hist && account) ? 'block' : 'none';
+  if (hist) renderHistory();
+}
+function clearHistory() {
+  if (!confirm('Clear your top-up history on this device? This cannot be undone. Your on-chain transactions are not affected.')) return;
+  localStorage.removeItem(HISTORY_KEY);
+  renderHistory();
 }
 
 /* ---------------- wallet ---------------- */
@@ -384,6 +422,19 @@ async function finalize() {
   const ctx = flow.ctx;
   const pcAmt = fmtPC(ctx.pcToDeposit);
   const idTxt = ctx.depositId != null ? ` (deposit #${ctx.depositId})` : '';
+  try {
+    saveHistoryEntry({
+      t: Date.now(),
+      account: account || '',
+      recipient: ctx.recipient,
+      payWith,
+      amountIn: ethers.formatUnits(ctx.amountIn, TOK().dp),
+      pc: ethers.formatUnits(ctx.pcToDeposit, 18),
+      depositId: ctx.depositId ?? null,
+      tx: ctx.depositTx || '',
+    });
+    if ($('historyPanel').style.display === 'block') renderHistory();
+  } catch {}
   $('stepAct').innerHTML = '';
   $('result').innerHTML =
     `✅ Locked <b>${pcAmt} $PC</b>${idTxt}.<br>` +
@@ -402,6 +453,10 @@ window.addEventListener('DOMContentLoaded', () => {
   $('agree').addEventListener('click', agree);
   $('showterms').addEventListener('click', (e) => { e.preventDefault(); showGate(true); });
   $('showterms2').addEventListener('click', (e) => { e.preventDefault(); showGate(true); });
+
+  $('tabTopup').addEventListener('click', () => showTab('topup'));
+  $('tabHistory').addEventListener('click', () => showTab('history'));
+  $('clearHistory').addEventListener('click', clearHistory);
 
   $('connect').addEventListener('click', connect);
   $('form').addEventListener('submit', startFlow);

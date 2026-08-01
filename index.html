@@ -87,6 +87,20 @@
     .scrollhint{font-size:11.5px;color:#e0a26a;margin:2px 0 12px;transition:color .3s}
     .scrollhint.done{color:#58e08f}
     #agree:disabled{opacity:.5;cursor:not-allowed;filter:grayscale(.35)}
+    .tabs{display:flex;gap:6px;margin-bottom:14px}
+    .tabs button{flex:1;padding:9px;border:1px solid #24314f;background:#0d1426;color:#8b9cc0;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer}
+    .tabs button.sel{background:#16233f;color:#e6ebf5;border-color:#2a6cf6}
+    #historyPanel{display:none}
+    .hnote{font-size:11.5px;color:#e8c48a;background:#221a10;border:1px solid #6a521f;border-radius:9px;padding:10px 12px;line-height:1.55;margin-bottom:12px}
+    .hnote b{color:#ffdca0}
+    .hitem{border:1px solid #1f2b47;border-radius:10px;padding:10px 12px;margin-bottom:9px;background:#0d1426}
+    .hitem .r1{display:flex;justify-content:space-between;align-items:baseline;font-size:14px;color:#cdd8ee}
+    .hitem .r1 b{color:#9fe3bf}
+    .hitem .id{font-size:11px;color:#7f8fb0}
+    .hitem .r2{font-size:11.5px;color:#8b9cc0;margin-top:3px}
+    .hitem .r2 a{color:#8fb0ff}
+    .hempty{font-size:12.5px;color:#7f8fb0;text-align:center;padding:18px 0}
+    .hclear{margin-top:4px;font-size:11.5px;color:#8b9cc0;background:none;border:0;text-decoration:underline;cursor:pointer}
   </style>
 </head>
 <body>
@@ -139,6 +153,11 @@
       <span class="tag">one-way · <a href="#" id="showterms">terms</a></span>
     </div>
     <div class="appcard card">
+      <div class="tabs">
+        <button type="button" id="tabTopup" class="sel">Top up</button>
+        <button type="button" id="tabHistory">History</button>
+      </div>
+
       <button id="connect" class="cta">Connect Wallet</button>
 
       <form id="form">
@@ -179,6 +198,12 @@
         <div id="status"></div>
         <div id="result"></div>
       </form>
+
+      <div id="historyPanel">
+        <div class="hnote">📌 This history is saved <b>only in this browser</b>. If you clear your browser data, use another device or browser, or open a private/incognito window, it will be gone. It's a convenience copy — <b>not</b> the source of truth. The on-chain record on the block explorer is always authoritative.</div>
+        <div id="historyList"></div>
+        <button type="button" id="clearHistory" class="hclear">Clear history on this device</button>
+      </div>
 
       <p class="appfine">One-way top-up · in-ecosystem $PC has no cash value, is non-transferable &amp; non-refundable · <a href="#" id="showterms2">full terms</a> · open-source, community-built interface (non-custodial, as-is), served via Cloudflare Pages. Confirm you're on the official Pentagon Games domain.</p>
     </div>
