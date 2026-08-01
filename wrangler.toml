@@ -1,7 +1,5 @@
-# Cloudflare Workers — static-assets-only deployment (no server code).
-# Serves index.html / app.js / config.js directly from the repo root.
+# Cloudflare Pages — static site, no build step.
+# Pages uploads everything under ./public and serves it at the site root.
 name = "bridge2-frontend"
+pages_build_output_dir = "public"
 compatibility_date = "2025-01-01"
-
-[assets]
-directory = "./"
