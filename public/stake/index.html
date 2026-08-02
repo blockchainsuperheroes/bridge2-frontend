@@ -85,6 +85,18 @@
     .lock .r1 b{color:#ffd76a}
     .lock .r2{color:#c9b784;margin-top:3px}
     #locksCard .hempty{color:#b39a55}
+    /* claimable amount — the row's visual anchor, sits right above the button */
+    .claimbox{margin-top:10px;padding:10px 12px;border-radius:10px;background:#12200f;border:1px solid #2c5f34;text-align:center}
+    .claimbox.waiting{background:#1a1a12;border-color:#4a4326}
+    .cb-label{display:block;font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:#7fbf8f;font-weight:700}
+    .claimbox.waiting .cb-label{color:#b39a55}
+    .cb-amt{display:block;font-size:26px;font-weight:800;color:#7df0a5;line-height:1.25;margin-top:2px;word-break:break-all}
+    .claimbox.waiting .cb-amt{color:#c9b784}
+    .cb-unit{font-size:12.5px;font-weight:700;color:#9fe3bf}
+    .claimbox.waiting .cb-unit{color:#b39a55}
+    .cb-sub{font-size:11px;color:#8b9cc0;margin-top:3px}
+    .rdsub{margin-top:7px;font-size:11.5px;color:#b39a55;text-align:center}
+    .rdsub b{color:#ffd76a}
     .lock .rs{margin-top:6px;font-size:12px;color:var(--dim);min-height:15px}
     .lock .rs.ok{color:var(--green2)}.lock .rs.err{color:#ff8f8f}
     .lock .r3{margin-top:8px;display:flex;gap:8px;flex-wrap:wrap}
@@ -168,7 +180,7 @@
       <h2>Congratulations!</h2>
       <p class="flash-sub">You received</p>
       <div class="flash-amt"><span id="flashAmt">0</span> <span class="flash-unit">PG Points</span></div>
-      <p class="flash-note">($PC on Pentagon Chain — in-ecosystem points, no cash value)</p>
+      <p class="flash-note">exact amount paid on-chain · $PC on Pentagon Chain — in-ecosystem points, no cash value</p>
       <p class="flash-links"><a id="flashTx" target="_blank" rel="noopener" href="#">View transaction ↗</a></p>
       <button type="button" id="flashClose" class="cta">Nice — continue</button>
     </div>
@@ -178,7 +190,13 @@
   <div id="app">
     <div class="head">
       <h2>Stake $PC</h2>
-      <span class="tag"><a href="details.html">program guide</a> · <a href="claims.html">claiming</a> · <a href="#" id="showterms">terms</a></span>
+      <span class="tag"><a href="details.html">program guide</a> · <a href="claims.html">claiming guide</a> · <a href="#" id="showterms">terms</a></span>
+    </div>
+
+    <div class="appcard card" id="locksCard" style="display:none">
+      <h4>My locks</h4>
+      <p class="tag">Each stake is its own lock — read live from the blockchain. Points are claimable up to once a week per lock, entirely on Pentagon Chain (<a href="claims.html">how claiming works →</a>).</p>
+      <div id="lockList"><div class="hempty">Connect your wallet to see your locks.</div></div>
     </div>
 
     <div class="appcard card">
@@ -213,11 +231,6 @@
       </form>
     </div>
 
-    <div class="appcard card" id="locksCard" style="display:none">
-      <h4>My locks</h4>
-      <p class="tag">Each stake is its own lock — read live from the blockchain. Points are claimable up to once a week per lock, entirely on Pentagon Chain (<a href="claims.html">how claiming works →</a>).</p>
-      <div id="lockList"><div class="hempty">Connect your wallet to see your locks.</div></div>
-    </div>
 
     <div class="appcard card" id="histCard" style="display:none">
       <h4>Activity on this device</h4>

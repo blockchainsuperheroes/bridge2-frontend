@@ -27,7 +27,9 @@ const LEDGER = [
   'function totalClaimed(bytes32) view returns (uint256)',
   'function claim(bytes32)',
   'function positions(bytes32) view returns (address staker,uint256 amount,uint64 start,uint64 lockEnd,uint16 rewardRateBps,uint256 lastClaim,bool open)',
+  'event RewardClaimed(bytes32 indexed stakeId, address indexed staker, uint256 amount, uint256 paidUpTo)',
 ];
+const YEAR = 31536000n; // 365 days, matching the contract
 
 const $ = (id) => document.getElementById(id);
 const status = (m, k = '') => { const e = $('status'); e.textContent = m; e.className = k; };
@@ -217,16 +219,43 @@ function quote() {
   q.innerHTML = `≈ <b>${weekly.toFixed(4)} $PC points/week</b> → <b>${total.toFixed(2)} points</b> over ${t.label} · your ${amt} $PC unlocks ${unlock}. <span style="color:#7fae95">(Points live on Pentagon Chain — no cash value, not withdrawable.)</span>`;
 }
 
+/* Ensure the wallet is on a given chain, switching (or adding) it automatically
+   instead of erroring — after a claim the wallet is left on Pentagon Chain, so
+   the next stake/withdraw would otherwise fail with a confusing message. */
+async function ensureChain(chainIdHex, addParams) {
+  if (!window.ethereum) throw new Error('No wallet found.');
+  const cur = await window.ethereum.request({ method: 'eth_chainId' });
+  if (cur?.toLowerCase() === chainIdHex.toLowerCase()) return;
+  try {
+    await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chainIdHex }] });
+  } catch (e) {
+    if (e.code === 4902 && addParams) {
+      await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [addParams] });
+    } else throw e;
+  }
+  // rebuild the signing side against the new chain (reads use their own RPC)
+  provider = new ethers.BrowserProvider(window.ethereum);
+  signer = await provider.getSigner();
+  if (chainIdHex.toLowerCase() === CFG.ethChainIdHex.toLowerCase()) {
+    pcToken = new ethers.Contract(CFG.pcTokenAddress, ERC20, signer);
+    vault = notDeployed() ? null : new ethers.Contract(CFG.stakeVaultAddress, VAULT, signer);
+  }
+}
+const ensureEth = () => ensureChain(CFG.ethChainIdHex);
+const ensurePcChain = () => ensureChain(CFG.pcChainIdHex, {
+  chainId: CFG.pcChainIdHex, chainName: CFG.pcChainName,
+  nativeCurrency: { name: 'PC', symbol: 'PC', decimals: 18 },
+  rpcUrls: [CFG.pcRpcUrl], blockExplorerUrls: [CFG.pcExplorerBase],
+});
+
 /* ---------------- wallet ---------------- */
 async function connect() {
   if (!window.ethereum) return status('No wallet found. Install MetaMask.', 'err');
   provider = new ethers.BrowserProvider(window.ethereum);
   await provider.send('eth_requestAccounts', []);
-  const net = await provider.getNetwork();
-  if ('0x' + net.chainId.toString(16) !== CFG.ethChainIdHex) {
-    try { await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CFG.ethChainIdHex }] }); provider = new ethers.BrowserProvider(window.ethereum); }
-    catch { return status(`Switch your wallet to ${CFG.ethChainName}.`, 'err'); }
-  }
+  try { await ensureEth(); } // request the switch rather than erroring out
+  catch { status(`Approve the switch to ${CFG.ethChainName} in your wallet to stake (claiming happens on ${CFG.pcChainName}).`, 'err'); }
+  provider = new ethers.BrowserProvider(window.ethereum);
   signer = await provider.getSigner();
   account = await signer.getAddress();
   $('connect').textContent = shortA(account);
@@ -374,13 +403,13 @@ async function startStake(e) {
           code: 'APPRV-PC', label: 'Approve $PC', act: 'Approve $PC',
           sub: 'Lets the staking contract lock exactly the $PC you chose.',
           precheck: async () => (await pcTokenRead.allowance(account, CFG.stakeVaultAddress)) >= amount,
-          run: async () => pcToken.approve(CFG.stakeVaultAddress, amount),
+          run: async () => { await ensureEth(); return pcToken.approve(CFG.stakeVaultAddress, amount); },
           verify: async () => (await pcTokenRead.allowance(account, CFG.stakeVaultAddress)) >= amount,
         },
         {
           code: 'LOCK', label: `Lock ${amtStr} $PC for ${termDays} days`, act: 'Lock $PC',
           sub: 'Creates a new lock — your rate is fixed on-chain the moment this confirms.',
-          run: async () => { ctx.beforeN = (await vaultRead.positionsOf(account)).length; return vault.stake(amount, termDays); },
+          run: async () => { await ensureEth(); ctx.beforeN = (await vaultRead.positionsOf(account)).length; return vault.stake(amount, termDays); },
           verify: async () => {
             const list = await vaultRead.positionsOf(account);
             if (list.length > (ctx.beforeN ?? 0)) { ctx.posId = list.length - 1; ctx.rate = Number(list[list.length - 1].rewardRateBps); return true; }
@@ -428,6 +457,45 @@ async function finalize() {
 /* ---------------- locks: list, claim, withdraw ---------------- */
 const rowStatus = (i, msg, cls = '') => { const el = $('rs' + i); if (el) { el.innerHTML = msg; el.className = 'rs ' + cls; } };
 
+/* Live claimable ticker — recomputes locally from on-chain values (no RPC per
+   tick) so the figure visibly grows, which is also why the claimed amount ends
+   up slightly higher than what was on screen when you pressed the button. */
+let liveLocks = [];
+const pendingAt = (L, nowSec) => {
+  const to = BigInt(Math.min(nowSec, L.lockEnd));
+  if (to <= L.lastClaim) return 0n;
+  return (L.amount * L.rateBps * (to - BigInt(L.lastClaim))) / 10000n / YEAR;
+};
+function startTicker() {
+  clearInterval(window._tick);
+  window._tick = setInterval(() => {
+    const now = Math.floor(Date.now() / 1000);
+    for (const L of liveLocks) {
+      const el = document.querySelector(`#cb${L.i} .cb-amt`);
+      if (!el) continue;
+      const v = pendingAt(L, now);
+      el.textContent = fmtPoints(v);
+      // flip to claimable the moment the interval elapses, without a reload
+      if (!L.ready && v > 0n && now >= L.nca) {
+        L.ready = true;
+        const cb = $('cb' + L.i); const btn = $('claim' + L.i);
+        if (cb) { cb.classList.remove('waiting'); const lab = cb.querySelector('.cb-label'); if (lab) lab.textContent = '✅ Claimable now'; const sub = cb.querySelector('.cb-sub'); if (sub) sub.remove(); }
+        if (btn) { btn.disabled = false; btn.title = ''; }
+      }
+      // live unlock countdown for the redeem button
+      if (!L.canWithdraw) {
+        const rd = $('rd' + L.i);
+        if (rd) rd.innerHTML = `🔒 unlocks in <b>${fmtDur(L.lockEnd - now)}</b> · ${new Date(L.lockEnd * 1000).toLocaleDateString()}`;
+        if (now >= L.lockEnd) {
+          L.canWithdraw = true;
+          const w = $('wd' + L.i); if (w) w.disabled = false;
+          if (rd) rd.innerHTML = '🔓 term complete — your $PC is ready to redeem';
+        }
+      }
+    }
+  }, 1000);
+}
+
 async function refreshLocks() {
   const el = $('lockList');
   if (!account || !vaultRead) { el.innerHTML = '<div class="hempty">Locks appear here after launch.</div>'; return; }
@@ -436,6 +504,7 @@ async function refreshLocks() {
   try { early = await vaultRead.emergencyUnlock(); } catch {}
   if (!list.length) { el.innerHTML = '<div class="hempty">No locks yet — your first stake shows up here.</div>'; return; }
   el.innerHTML = '';
+  liveLocks = [];
   const now = Math.floor(Date.now() / 1000);
   list.forEach(async (p, i) => {
     const d = document.createElement('div');
@@ -452,14 +521,22 @@ async function refreshLocks() {
     d.innerHTML =
       `<div class="r1"><span>Lock #${i} · <b>${fmtPC(p.amount)} $PC</b> @ ${rate}%</span><span>${Number(p.termDays)}d</span></div>` +
       `<div class="r2">${stateTxt}</div>` +
-      `<div class="r2" id="pend${i}">PG Points: checking…</div>` +
+      `<div class="r2" id="meta${i}">PG Points: checking…</div>` +
+      `<div class="claimbox waiting" id="cb${i}"><span class="cb-label">Claimable</span><span class="cb-amt">…</span></div>` +
       `<div class="rs" id="rs${i}"></div>` +
       `<div class="r3">` +
       `<button type="button" id="claim${i}" disabled>Claim PG Points ($PC on Pentagon Chain)</button>` +
-      (canWithdraw ? `<button type="button" class="w" id="wd${i}">Withdraw ${fmtPC(p.amount)} $PC</button>` : '') +
-      `</div>`;
+      (p.withdrawn ? '' : `<button type="button" class="w" id="wd${i}" ${canWithdraw ? '' : 'disabled'}>Redeem my ${fmtPC(p.amount)} $PC on ${CFG.ethChainName}</button>`) +
+      `</div>` +
+      (p.withdrawn ? '' : `<div class="rdsub" id="rd${i}"></div>`);
     el.appendChild(d);
     const wd = $('wd' + i); if (wd) wd.onclick = () => withdrawLock(i, p);
+    const rd = $('rd' + i);
+    if (rd) rd.innerHTML = canWithdraw
+      ? (early && now < end
+          ? '🔓 early redeem enabled (test mode) — your principal is available now'
+          : '🔓 term complete — your $PC is ready to redeem')
+      : `🔒 unlocks in <b>${fmtDur(end - now)}</b> · ${new Date(end * 1000).toLocaleDateString()}`;
     try {
       const id = stakeIdOf(account, i);
       const pos = await ledgerRead('positions', [id]);
@@ -474,17 +551,28 @@ async function refreshLocks() {
       const ready = pend > 0n && now >= Number(nca);
       // per-day accrual so the (necessarily small) numbers make sense
       const perDay = (p.amount * BigInt(p.rewardRateBps)) / 10000n / 365n;
-      let line = `PG Points claimed so far: <b style="color:#ffd76a">${fmtPoints(claimed)}</b> · accruing now: <b>${fmtPoints(pend)}</b>`
-        + `<br><span style="color:#b39a55">earning ≈ ${fmtPoints(perDay)} PG Points/day</span>`;
-      if (p.withdrawn) line += '';
-      else if (ready) line += ' · <b style="color:#58e08f">✅ claimable now</b>';
-      else if (pend > 0n) line += ` · next claim in ${fmtDur(Number(nca) - now)} (${new Date(Number(nca) * 1000).toLocaleTimeString()})`;
-      $('pend' + i).innerHTML = line;
+      $('meta' + i).innerHTML = `PG Points claimed so far: <b style="color:#ffd76a">${fmtPoints(claimed)}</b>`
+        + ` · earning ≈ ${fmtPoints(perDay)}/day`;
+      // big, bold claimable figure directly above the button
+      const cb = $('cb' + i);
+      cb.classList.toggle('waiting', !ready);
+      cb.innerHTML = ready
+        ? `<span class="cb-label">✅ Claimable now</span>`
+          + `<span class="cb-amt">${fmtPoints(pend)}</span>`
+          + `<span class="cb-unit">PG Points</span>`
+        : `<span class="cb-label">Not yet claimable</span>`
+          + `<span class="cb-amt">${fmtPoints(pend)}</span>`
+          + `<span class="cb-unit">PG Points</span>`
+          + `<div class="cb-sub">${p.withdrawn ? 'lock closed' : pend === 0n ? 'starting to accrue…' : `unlocks in ${fmtDur(Number(nca) - now)} · ${new Date(Number(nca) * 1000).toLocaleTimeString()}`}</div>`;
       const btn = $('claim' + i);
       btn.disabled = !ready;
-      btn.title = ready ? '' : `Claimable once per ${fmtDur(Number(nca) - Number(pos.lastClaim))}`;
+      btn.title = ready ? '' : 'Claimable once per interval';
       btn.onclick = () => claimLock(i, pend);
-    } catch { $('pend' + i).textContent = 'PG Points: opening on Pentagon Chain… (check back shortly)'; }
+      if (!p.withdrawn) {
+        liveLocks.push({ i, amount: pos.amount, rateBps: BigInt(pos.rewardRateBps), lastClaim: Number(pos.lastClaim), lockEnd: Number(pos.lockEnd), nca: Number(nca), ready, canWithdraw });
+        startTicker();
+      }
+    } catch { $('meta' + i).textContent = 'PG Points: opening on Pentagon Chain… (check back shortly)'; }
   });
 }
 
@@ -494,17 +582,7 @@ async function claimLock(i, pendBefore) {
   try {
     if (CFG.pcChainIdHex === '0x0') { rowStatus(i, 'Pentagon Chain network config pending.', 'err'); return; }
     rowStatus(i, spin(`Step 1 of 3 — switching your wallet to ${CFG.pcChainName}… (approve the switch in your wallet)`));
-    try {
-      await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CFG.pcChainIdHex }] });
-    } catch (e) {
-      if (e.code === 4902) {
-        await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [{
-          chainId: CFG.pcChainIdHex, chainName: CFG.pcChainName,
-          nativeCurrency: { name: 'PC', symbol: 'PC', decimals: 18 },
-          rpcUrls: [CFG.pcRpcUrl], blockExplorerUrls: [CFG.pcExplorerBase],
-        }] });
-      } else throw e;
-    }
+    await ensurePcChain();
     rowStatus(i, spin('Step 2 of 3 — confirm the claim in your wallet…'));
     const pcProvider = new ethers.BrowserProvider(window.ethereum);
     const ledger = new ethers.Contract(CFG.ledgerAddress, LEDGER, await pcProvider.getSigner());
@@ -515,9 +593,18 @@ async function claimLock(i, pendBefore) {
     let ok = false;
     for (let k = 0; k < 40; k++) { try { const [p2] = await ledgerRead('pending', [id]); if (p2 < pendBefore) { ok = true; break; } } catch {} await sleep(3000); }
     if (!ok) { rowStatus(i, `Sent — taking longer than usual. <a target="_blank" rel="noopener" href="${CFG.pcExplorerBase}/tx/${tx.hash}?tab=internal_txns">view tx</a>`, ''); return; }
-    rowStatus(i, `✅ Claimed ${fmtPoints(pendBefore)} PG Points · <a target="_blank" rel="noopener" href="${CFG.pcExplorerBase}/tx/${tx.hash}?tab=internal_txns">tx</a> · you can switch your wallet back to ${CFG.ethChainName}.`, 'ok');
-    addHist({ type: 'claim', text: `Claimed ${fmtPoints(pendBefore)} PG Points (lock #${i})`, tx: tx.hash, pcTx: true });
-    showFlash(pendBefore, tx.hash);
+    // EXACT amount paid, straight from the RewardClaimed event (the on-screen
+    // figure is a snapshot — a few more seconds accrue before the tx mines).
+    let exact = pendBefore;
+    try {
+      const rc = await pcProvider.getTransactionReceipt(tx.hash);
+      for (const lg of rc.logs) {
+        try { const parsed = ledger.interface.parseLog(lg); if (parsed?.name === 'RewardClaimed') { exact = parsed.args.amount; break; } } catch {}
+      }
+    } catch {}
+    rowStatus(i, `✅ Claimed ${fmtPoints(exact)} PG Points · <a target="_blank" rel="noopener" href="${CFG.pcExplorerBase}/tx/${tx.hash}?tab=internal_txns">tx</a> · you can switch your wallet back to ${CFG.ethChainName}.`, 'ok');
+    addHist({ type: 'claim', text: `Claimed ${fmtPoints(exact)} PG Points (lock #${i})`, tx: tx.hash, pcTx: true });
+    showFlash(exact, tx.hash);
     refreshLocks();
   } catch (err) {
     console.error(err);
@@ -541,14 +628,8 @@ function showFlash(amountWei, txHash) {
 async function withdrawLock(i, p) {
   const btn = $('wd' + i); if (btn) btn.disabled = true;
   try {
-    rowStatus(i, spin(`Confirm in your wallet — withdrawing your ${fmtPC(p.amount)} $PC principal (on ${CFG.ethChainName})…`));
-    const net = await provider.getNetwork();
-    if ('0x' + net.chainId.toString(16) !== CFG.ethChainIdHex) {
-      await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CFG.ethChainIdHex }] });
-      provider = new ethers.BrowserProvider(window.ethereum);
-      signer = await provider.getSigner();
-      vault = new ethers.Contract(CFG.stakeVaultAddress, VAULT, signer);
-    }
+    rowStatus(i, spin(`Switching to ${CFG.ethChainName} if needed, then confirm in your wallet — withdrawing your ${fmtPC(p.amount)} $PC principal…`));
+    await ensureEth(); // auto-switch instead of failing when left on Pentagon Chain
     const tx = await vault.withdraw(i);
     rowStatus(i, spin('Submitted — confirming on-chain…'));
     let ok = false;
@@ -570,7 +651,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   // which links back here; after that, straight to terms gate / app.
   if (localStorage.getItem(GUIDE_KEY) !== '1' && localStorage.getItem(AGREED_KEY) !== '1') {
     try { localStorage.setItem(GUIDE_KEY, '1'); } catch {}
-    location.replace('details.html');
+    location.replace('welcome.html');
     return;
   }
   $('tosbox')?.addEventListener('scroll', checkTosScroll);
