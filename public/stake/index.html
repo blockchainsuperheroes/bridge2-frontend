@@ -74,11 +74,17 @@
     #result{margin-top:10px;font-size:13px;line-height:1.55;color:var(--txt)}
     .tstep{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:8px;background:#0d1426;font-size:12px;color:var(--dim)}
     .tstep.done{border-color:#1f5a3a;background:#0d1a12;color:var(--mint)}
-    /* locks */
-    .lock{border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:10px;background:#0d1426;font-size:12.5px}
-    .lock .r1{display:flex;justify-content:space-between;color:var(--head);font-size:14px}
-    .lock .r1 b{color:var(--mint)}
-    .lock .r2{color:var(--dim);margin-top:3px}
+    /* locks — gold card so your positions stand out */
+    #locksCard{background:linear-gradient(160deg,#1a1508 0%,#141005 100%);border:1px solid #8a6d1f;box-shadow:0 0 22px rgba(212,166,47,.10)}
+    #locksCard h4{color:#ffd76a;font-size:15px}
+    #locksCard h4::before{content:"🏆 "}
+    #locksCard .tag{color:#b39a55}
+    #locksCard .tag a{color:#e8c060}
+    .lock{border:1px solid #6a521f;border-radius:10px;padding:12px;margin-top:10px;background:#201808;font-size:12.5px}
+    .lock .r1{display:flex;justify-content:space-between;color:#ffe9b3;font-size:14px}
+    .lock .r1 b{color:#ffd76a}
+    .lock .r2{color:#c9b784;margin-top:3px}
+    #locksCard .hempty{color:#b39a55}
     .lock .rs{margin-top:6px;font-size:12px;color:var(--dim);min-height:15px}
     .lock .rs.ok{color:var(--green2)}.lock .rs.err{color:#ff8f8f}
     .lock .r3{margin-top:8px;display:flex;gap:8px;flex-wrap:wrap}
