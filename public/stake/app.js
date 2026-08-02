@@ -35,6 +35,22 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const spin = (t) => `<span class="spin"></span>${t}`;
 const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 const fmtPC = (v) => (+ethers.formatUnits(v, 18)).toLocaleString(undefined, { maximumFractionDigits: 4 });
+// PG Points accrue slowly (1 $PC @ 14% ≈ 0.00038/day), so 4 decimals renders "0".
+// Use adaptive precision so small-but-real balances are always visible.
+function fmtPoints(v) {
+  const n = +ethers.formatUnits(v, 18);
+  if (n === 0) return '0';
+  if (n >= 1) return n.toLocaleString(undefined, { maximumFractionDigits: 4 });
+  if (n >= 0.0001) return n.toFixed(6);
+  return n.toFixed(10).replace(/0+$/, ''); // tiny but non-zero — never show a bare "0"
+}
+const fmtDur = (s) => {
+  s = Math.max(0, Math.round(s));
+  if (s < 60) return `${s}s`;
+  if (s < 3600) return `${Math.ceil(s / 60)} min`;
+  if (s < 86400) return `${(s / 3600).toFixed(1)} h`;
+  return `${Math.ceil(s / 86400)} d`;
+};
 const shortA = (a) => a.slice(0, 6) + '…' + a.slice(-4);
 const notDeployed = () => CFG.stakeVaultAddress === '0x0000000000000000000000000000000000000000';
 
@@ -456,11 +472,17 @@ async function refreshLocks() {
       try { [claimed] = await ledgerRead('totalClaimed', [id]); }
       catch { claimed = (pos.amount * BigInt(pos.rewardRateBps) * (BigInt(pos.lastClaim) - BigInt(pos.start))) / 10000n / 31536000n; }
       const ready = pend > 0n && now >= Number(nca);
-      $('pend' + i).innerHTML = `PG Points claimed so far: <b style="color:#ffd76a">${fmtPC(claimed)}</b> · accrued now: <b>${fmtPC(pend)}</b>`
-        + (pend > 0n && !ready ? ` · next claim ${new Date(Number(nca) * 1000).toLocaleString()}` : '')
-        + (pend === 0n && !p.withdrawn ? ' (accruing…)' : '');
+      // per-day accrual so the (necessarily small) numbers make sense
+      const perDay = (p.amount * BigInt(p.rewardRateBps)) / 10000n / 365n;
+      let line = `PG Points claimed so far: <b style="color:#ffd76a">${fmtPoints(claimed)}</b> · accruing now: <b>${fmtPoints(pend)}</b>`
+        + `<br><span style="color:#b39a55">earning ≈ ${fmtPoints(perDay)} PG Points/day</span>`;
+      if (p.withdrawn) line += '';
+      else if (ready) line += ' · <b style="color:#58e08f">✅ claimable now</b>';
+      else if (pend > 0n) line += ` · next claim in ${fmtDur(Number(nca) - now)} (${new Date(Number(nca) * 1000).toLocaleTimeString()})`;
+      $('pend' + i).innerHTML = line;
       const btn = $('claim' + i);
       btn.disabled = !ready;
+      btn.title = ready ? '' : `Claimable once per ${fmtDur(Number(nca) - Number(pos.lastClaim))}`;
       btn.onclick = () => claimLock(i, pend);
     } catch { $('pend' + i).textContent = 'PG Points: opening on Pentagon Chain… (check back shortly)'; }
   });
@@ -493,8 +515,8 @@ async function claimLock(i, pendBefore) {
     let ok = false;
     for (let k = 0; k < 40; k++) { try { const [p2] = await ledgerRead('pending', [id]); if (p2 < pendBefore) { ok = true; break; } } catch {} await sleep(3000); }
     if (!ok) { rowStatus(i, `Sent — taking longer than usual. <a target="_blank" rel="noopener" href="${CFG.pcExplorerBase}/tx/${tx.hash}?tab=internal_txns">view tx</a>`, ''); return; }
-    rowStatus(i, `✅ Claimed ${fmtPC(pendBefore)} PG Points · <a target="_blank" rel="noopener" href="${CFG.pcExplorerBase}/tx/${tx.hash}?tab=internal_txns">tx</a> · you can switch your wallet back to ${CFG.ethChainName}.`, 'ok');
-    addHist({ type: 'claim', text: `Claimed ${fmtPC(pendBefore)} PG Points (lock #${i})`, tx: tx.hash, pcTx: true });
+    rowStatus(i, `✅ Claimed ${fmtPoints(pendBefore)} PG Points · <a target="_blank" rel="noopener" href="${CFG.pcExplorerBase}/tx/${tx.hash}?tab=internal_txns">tx</a> · you can switch your wallet back to ${CFG.ethChainName}.`, 'ok');
+    addHist({ type: 'claim', text: `Claimed ${fmtPoints(pendBefore)} PG Points (lock #${i})`, tx: tx.hash, pcTx: true });
     showFlash(pendBefore, tx.hash);
     refreshLocks();
   } catch (err) {
@@ -508,7 +530,7 @@ async function claimLock(i, pendBefore) {
 /* Celebration flash after a successful claim. */
 function showFlash(amountWei, txHash) {
   const f = $('flash'); if (!f) return;
-  $('flashAmt').textContent = fmtPC(amountWei);
+  $("flashAmt").textContent = fmtPoints(amountWei);
   const a = $('flashTx');
   if (txHash) { a.style.display = 'inline'; a.href = `${CFG.pcExplorerBase}/tx/${txHash}?tab=internal_txns`; }
   else a.style.display = 'none';
