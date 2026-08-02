@@ -5,6 +5,9 @@ window.PCSTAKE_CONFIG = {
   // Ethereum (principal side)
   ethChainIdHex: '0x1',
   ethChainName: 'Ethereum',
+  // Read-only ETH RPC — used for all reads so "My locks" keeps working even while
+  // the wallet is switched to Pentagon Chain during a claim.
+  ethRpcUrl: 'https://ethereum-rpc.publicnode.com',
   pcTokenAddress: '0xA1Aa371E450C5AeE7fff259cbF5ccA9384227272', // $PC ERC-20 (18dp)
   stakeVaultAddress: '0xe31d31Ecb5Fbee1d142a26E44BEdC94C4DFb3B34', // PCStakeVault (TEST proxy)
   explorerBase: 'https://etherscan.io',

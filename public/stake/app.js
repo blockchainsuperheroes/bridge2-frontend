@@ -24,6 +24,7 @@ const VAULT = [
 const LEDGER = [
   'function pending(bytes32) view returns (uint256)',
   'function nextClaimAt(bytes32) view returns (uint256)',
+  'function totalClaimed(bytes32) view returns (uint256)',
   'function claim(bytes32)',
   'function positions(bytes32) view returns (address staker,uint256 amount,uint64 start,uint64 lockEnd,uint16 rewardRateBps,uint256 lastClaim,bool open)',
 ];
@@ -38,6 +39,14 @@ const shortA = (a) => a.slice(0, 6) + '…' + a.slice(-4);
 const notDeployed = () => CFG.stakeVaultAddress === '0x0000000000000000000000000000000000000000';
 
 let provider, signer, account, vault, pcToken;
+// Read-side contracts pinned to an ETH RPC — immune to the wallet switching to
+// Pentagon Chain mid-claim (that switch used to break "My locks").
+let ethRead, vaultRead, pcTokenRead;
+function initReadProviders() {
+  ethRead = new ethers.JsonRpcProvider(CFG.ethRpcUrl || 'https://ethereum-rpc.publicnode.com', parseInt(CFG.ethChainIdHex, 16));
+  pcTokenRead = new ethers.Contract(CFG.pcTokenAddress, ERC20, ethRead);
+  vaultRead = notDeployed() ? null : new ethers.Contract(CFG.stakeVaultAddress, VAULT, ethRead);
+}
 const ledgerIface = new ethers.Interface(LEDGER);
 
 /* ---------------- terms gate (scroll-to-enable, like the bridge) ---------------- */
@@ -149,10 +158,9 @@ function renderSchedule(ceilings, rates, staked) {
   return { open, idx, rates };
 }
 async function refreshTranche() {
-  if (!notDeployed() && provider) {
+  if (vaultRead) {
     try {
-      const v = new ethers.Contract(CFG.stakeVaultAddress, VAULT, provider);
-      const [ceil, rates, staked] = await v.trancheSchedule();
+      const [ceil, rates, staked] = await vaultRead.trancheSchedule();
       return renderSchedule([...ceil], rates.map((r) => [...r].map(Number)), staked);
     } catch {}
   }
@@ -164,8 +172,8 @@ async function refreshTermRates() {
   const sel = $('term'); sel.innerHTML = '';
   for (const t of CFG.terms) {
     let bps = null;
-    if (!notDeployed() && provider) {
-      try { bps = Number(await new ethers.Contract(CFG.stakeVaultAddress, VAULT, provider).rateFor(t.days)); } catch {}
+    if (vaultRead) {
+      try { bps = Number(await vaultRead.rateFor(t.days)); } catch {}
     }
     if (bps == null) { // fallback display rate from config (active tranche assumed A pre-launch)
       const ti = CFG.terms.indexOf(t);
@@ -206,6 +214,7 @@ async function connect() {
   signer = await provider.getSigner();
   account = await signer.getAddress();
   $('connect').textContent = shortA(account);
+  initReadProviders();
   pcToken = new ethers.Contract(CFG.pcTokenAddress, ERC20, signer);
   vault = notDeployed() ? null : new ethers.Contract(CFG.stakeVaultAddress, VAULT, signer);
   $('form').style.display = 'block';
@@ -215,10 +224,10 @@ async function connect() {
 }
 async function refreshBalances() {
   if (!account) return;
-  try { $('balance').textContent = fmtPC(await pcToken.balanceOf(account)) + ' $PC'; } catch {}
-  if (vault) {
+  try { $('balance').textContent = fmtPC(await pcTokenRead.balanceOf(account)) + ' $PC'; } catch {}
+  if (vaultRead) {
     try {
-      const [mine, cap] = await Promise.all([vault.stakedByStaker(account), vault.maxStakePerStaker()]);
+      const [mine, cap] = await Promise.all([vaultRead.stakedByStaker(account), vaultRead.maxStakePerStaker()]);
       $('committed').textContent = `${fmtPC(mine)} / ${fmtPC(cap)} $PC`;
       $('maxCap').textContent = fmtPC(cap);
     } catch {}
@@ -336,7 +345,7 @@ async function startStake(e) {
     const amtStr = $('amount').value.trim();
     if (!amtStr || Number(amtStr) <= 0) return status('Enter an amount.', 'err');
     const amount = ethers.parseUnits(amtStr, 18);
-    if (amount > await pcToken.balanceOf(account)) return status('Amount exceeds your $PC balance.', 'err');
+    if (amount > await pcTokenRead.balanceOf(account)) return status('Amount exceeds your $PC balance.', 'err');
     const termDays = Number($('term').value);
     const bps = Number($('term').selectedOptions[0].dataset.bps || 0);
 
@@ -348,16 +357,16 @@ async function startStake(e) {
         {
           code: 'APPRV-PC', label: 'Approve $PC', act: 'Approve $PC',
           sub: 'Lets the staking contract lock exactly the $PC you chose.',
-          precheck: async () => (await pcToken.allowance(account, CFG.stakeVaultAddress)) >= amount,
+          precheck: async () => (await pcTokenRead.allowance(account, CFG.stakeVaultAddress)) >= amount,
           run: async () => pcToken.approve(CFG.stakeVaultAddress, amount),
-          verify: async () => (await pcToken.allowance(account, CFG.stakeVaultAddress)) >= amount,
+          verify: async () => (await pcTokenRead.allowance(account, CFG.stakeVaultAddress)) >= amount,
         },
         {
           code: 'LOCK', label: `Lock ${amtStr} $PC for ${termDays} days`, act: 'Lock $PC',
           sub: 'Creates a new lock — your rate is fixed on-chain the moment this confirms.',
-          run: async () => { ctx.beforeN = (await vault.positionsOf(account)).length; return vault.stake(amount, termDays); },
+          run: async () => { ctx.beforeN = (await vaultRead.positionsOf(account)).length; return vault.stake(amount, termDays); },
           verify: async () => {
-            const list = await vault.positionsOf(account);
+            const list = await vaultRead.positionsOf(account);
             if (list.length > (ctx.beforeN ?? 0)) { ctx.posId = list.length - 1; ctx.rate = Number(list[list.length - 1].rewardRateBps); return true; }
             return false;
           },
@@ -405,10 +414,10 @@ const rowStatus = (i, msg, cls = '') => { const el = $('rs' + i); if (el) { el.i
 
 async function refreshLocks() {
   const el = $('lockList');
-  if (!account || !vault) { el.innerHTML = '<div class="hempty">Locks appear here after launch.</div>'; return; }
+  if (!account || !vaultRead) { el.innerHTML = '<div class="hempty">Locks appear here after launch.</div>'; return; }
   let list = [], early = false;
-  try { list = await vault.positionsOf(account); } catch { el.innerHTML = '<div class="hempty">Could not load locks — refresh in a moment.</div>'; return; }
-  try { early = await vault.emergencyUnlock(); } catch {}
+  try { list = await vaultRead.positionsOf(account); } catch { el.innerHTML = '<div class="hempty">Could not load locks — refresh in a moment.</div>'; return; }
+  try { early = await vaultRead.emergencyUnlock(); } catch {}
   if (!list.length) { el.innerHTML = '<div class="hempty">No locks yet — your first stake shows up here.</div>'; return; }
   el.innerHTML = '';
   const now = Math.floor(Date.now() / 1000);
@@ -427,26 +436,33 @@ async function refreshLocks() {
     d.innerHTML =
       `<div class="r1"><span>Lock #${i} · <b>${fmtPC(p.amount)} $PC</b> @ ${rate}%</span><span>${Number(p.termDays)}d</span></div>` +
       `<div class="r2">${stateTxt}</div>` +
-      `<div class="r2" id="pend${i}">points: checking…</div>` +
+      `<div class="r2" id="pend${i}">PG Points: checking…</div>` +
       `<div class="rs" id="rs${i}"></div>` +
       `<div class="r3">` +
-      `<button type="button" id="claim${i}" disabled>Claim points</button>` +
+      `<button type="button" id="claim${i}" disabled>Claim PG Points ($PC on Pentagon Chain)</button>` +
       (canWithdraw ? `<button type="button" class="w" id="wd${i}">Withdraw ${fmtPC(p.amount)} $PC</button>` : '') +
       `</div>`;
     el.appendChild(d);
     const wd = $('wd' + i); if (wd) wd.onclick = () => withdrawLock(i, p);
     try {
       const id = stakeIdOf(account, i);
+      const pos = await ledgerRead('positions', [id]);
       const [pend] = await ledgerRead('pending', [id]);
       const [nca] = await ledgerRead('nextClaimAt', [id]);
+      // Claimed-so-far, always from chain (durable — never browser memory).
+      // Prefer the ledger's exact totalClaimed(); older deployments without it
+      // fall back to deriving it: total claimed == accrual(start -> lastClaim).
+      let claimed;
+      try { [claimed] = await ledgerRead('totalClaimed', [id]); }
+      catch { claimed = (pos.amount * BigInt(pos.rewardRateBps) * (BigInt(pos.lastClaim) - BigInt(pos.start))) / 10000n / 31536000n; }
       const ready = pend > 0n && now >= Number(nca);
-      $('pend' + i).textContent = `points accrued: ${fmtPC(pend)} $PC`
+      $('pend' + i).innerHTML = `PG Points claimed so far: <b style="color:#ffd76a">${fmtPC(claimed)}</b> · accrued now: <b>${fmtPC(pend)}</b>`
         + (pend > 0n && !ready ? ` · next claim ${new Date(Number(nca) * 1000).toLocaleString()}` : '')
         + (pend === 0n && !p.withdrawn ? ' (accruing…)' : '');
       const btn = $('claim' + i);
       btn.disabled = !ready;
       btn.onclick = () => claimLock(i, pend);
-    } catch { $('pend' + i).textContent = 'points: opening on Pentagon Chain… (check back shortly)'; }
+    } catch { $('pend' + i).textContent = 'PG Points: opening on Pentagon Chain… (check back shortly)'; }
   });
 }
 
@@ -477,8 +493,9 @@ async function claimLock(i, pendBefore) {
     let ok = false;
     for (let k = 0; k < 40; k++) { try { const [p2] = await ledgerRead('pending', [id]); if (p2 < pendBefore) { ok = true; break; } } catch {} await sleep(3000); }
     if (!ok) { rowStatus(i, `Sent — taking longer than usual. <a target="_blank" rel="noopener" href="${CFG.pcExplorerBase}/tx/${tx.hash}?tab=internal_txns">view tx</a>`, ''); return; }
-    rowStatus(i, `✅ Claimed ${fmtPC(pendBefore)} $PC points · <a target="_blank" rel="noopener" href="${CFG.pcExplorerBase}/tx/${tx.hash}?tab=internal_txns">tx</a> · you can switch your wallet back to ${CFG.ethChainName}.`, 'ok');
-    addHist({ type: 'claim', text: `Claimed ${fmtPC(pendBefore)} $PC points (lock #${i})`, tx: tx.hash, pcTx: true });
+    rowStatus(i, `✅ Claimed ${fmtPC(pendBefore)} PG Points · <a target="_blank" rel="noopener" href="${CFG.pcExplorerBase}/tx/${tx.hash}?tab=internal_txns">tx</a> · you can switch your wallet back to ${CFG.ethChainName}.`, 'ok');
+    addHist({ type: 'claim', text: `Claimed ${fmtPC(pendBefore)} PG Points (lock #${i})`, tx: tx.hash, pcTx: true });
+    showFlash(pendBefore, tx.hash);
     refreshLocks();
   } catch (err) {
     console.error(err);
@@ -486,6 +503,16 @@ async function claimLock(i, pendBefore) {
     rowStatus(i, `⚠️ ${esc(niceErr(err))} <span style="color:#7f8fb0">(code ${code})</span>`, 'err');
     if (btn) btn.disabled = false;
   }
+}
+
+/* Celebration flash after a successful claim. */
+function showFlash(amountWei, txHash) {
+  const f = $('flash'); if (!f) return;
+  $('flashAmt').textContent = fmtPC(amountWei);
+  const a = $('flashTx');
+  if (txHash) { a.style.display = 'inline'; a.href = `${CFG.pcExplorerBase}/tx/${txHash}?tab=internal_txns`; }
+  else a.style.display = 'none';
+  f.style.display = 'flex';
 }
 
 /* Withdraw principal — single guided step. */
@@ -503,7 +530,7 @@ async function withdrawLock(i, p) {
     const tx = await vault.withdraw(i);
     rowStatus(i, spin('Submitted — confirming on-chain…'));
     let ok = false;
-    for (let k = 0; k < 60; k++) { try { if ((await vault.positionsOf(account))[i].withdrawn) { ok = true; break; } } catch {} await sleep(3000); }
+    for (let k = 0; k < 60; k++) { try { if ((await vaultRead.positionsOf(account))[i].withdrawn) { ok = true; break; } } catch {} await sleep(3000); }
     if (!ok) { rowStatus(i, `Sent — still confirming. <a target="_blank" rel="noopener" href="${CFG.explorerBase}/tx/${tx.hash}">view tx</a>`, ''); return; }
     rowStatus(i, `✅ ${fmtPC(p.amount)} $PC returned to your wallet · <a target="_blank" rel="noopener" href="${CFG.explorerBase}/tx/${tx.hash}">tx</a>`, 'ok');
     addHist({ type: 'withdraw', text: `Withdrew ${fmtPC(p.amount)} $PC principal (lock #${i})`, tx: tx.hash });
@@ -545,9 +572,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     quote();
   });
   $('clearHist').addEventListener('click', clearHist);
+  $('flashClose').addEventListener('click', () => { $('flash').style.display = 'none'; });
 
   if (window.ethereum) window.ethereum.on?.('accountsChanged', () => location.reload());
 
+  initReadProviders();   // reads never depend on which chain the wallet is on
   renderHist();
   await refreshTranche();
   await refreshTermRates();
