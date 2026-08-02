@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pentagon Chain · Stake $PC</title>
+  <style>
+    :root{--bg:#0a0f1c;--card:#101828;--line:#1f2b47;--line2:#2b3a5e;--txt:#cdd8ee;--head:#e6ebf5;--dim:#8b9cc0;--dim2:#7f8fb0;--green:#16a06a;--green2:#58e08f;--mint:#9fe3bf;--blue:#2a6cf6}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--bg);color:var(--txt);font:14px/1.6 -apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif}
+    a{color:#8fb0ff}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px}
+    /* ---------- gate ---------- */
+    #gate{display:none;position:fixed;inset:0;background:rgba(4,7,14,.92);z-index:50;align-items:center;justify-content:center;padding:16px;overflow:auto}
+    .gate-card{max-width:640px;margin:auto}
+    .gate-card h1{color:var(--head);font-size:20px;margin-bottom:8px}
+    .gate-card p{font-size:13px;color:var(--dim)}
+    .banner{background:#221a10;border:1px solid #6a521f;border-radius:11px;padding:10px 13px;font-size:12px;color:#e8c48a;margin-top:12px}
+    .banner b{color:#ffdca0}
+    .tosbox{max-height:200px;overflow-y:auto;border:1px solid var(--line2);border-radius:10px;padding:4px 14px;margin:14px 0 6px;background:#0b1120}
+    .tosbox::-webkit-scrollbar{width:9px}
+    .tosbox::-webkit-scrollbar-thumb{background:#33456e;border-radius:5px}
+    .tosbox h3{color:var(--mint);font-size:12.5px;margin:12px 0 4px}
+    .tosbox p,.tosbox li{font-size:11.5px;color:#9fb0d0;margin:8px 0;line-height:1.55}
+    .tosbox b{color:var(--txt)}
+    .tosbox .no{color:#ff9db0}
+    .tosend{font-size:12px;color:var(--green2);margin:10px 0 2px;font-weight:600}
+    .scrollhint{font-size:11.5px;color:#e0a26a;margin:2px 0 12px;transition:color .3s}
+    .scrollhint.done{color:var(--green2)}
+    .chk{display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--dim);margin:8px 0 12px;cursor:pointer}
+    .cta{display:block;width:100%;padding:13px;border:0;border-radius:10px;background:var(--green);color:#fff;font-weight:700;font-size:15px;cursor:pointer}
+    .cta:disabled{opacity:.5;cursor:not-allowed;filter:grayscale(.35)}
+    /* ---------- app ---------- */
+    #app{display:none;max-width:640px;margin:0 auto;padding:28px 16px 60px}
+    .head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px}
+    .head h2{color:var(--head);font-size:20px}
+    .tag{font-size:11.5px;color:var(--dim2)}
+    .appcard{margin-bottom:16px}
+    .tranche{background:#0d1a12;border:1px solid #1f5a3a;border-radius:11px;padding:12px 14px;margin-bottom:16px}
+    .tranche .r1{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px;font-size:12.5px}
+    .tranche b{color:var(--green2)}
+    .tranche .rem{color:var(--mint);font-size:12px}
+    .bar{height:8px;background:#12202f;border-radius:5px;overflow:hidden;margin:8px 0 6px}
+    .bar>div{height:100%;width:0%;background:linear-gradient(90deg,#16a06a,#58e08f);transition:width .6s}
+    .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+    .chip{font-size:11.5px;background:#0d1426;border:1px solid var(--line2);border-radius:99px;padding:3px 10px;color:var(--dim)}
+    .chip b{color:var(--mint)}
+    .fld{display:block;font-size:11.5px;color:var(--dim2);margin:14px 0 5px}
+    input,select{width:100%;background:#0b1120;border:1px solid var(--line2);border-radius:9px;color:var(--head);padding:11px 12px;font-size:14px}
+    .row{display:flex;gap:8px}.row input{flex:1}
+    .row button{background:#16233f;border:1px solid var(--line2);color:#9fb0d0;border-radius:9px;padding:0 14px;cursor:pointer}
+    .bal{font-size:11.5px;color:var(--dim2);margin-top:6px}
+    .quote{background:#0d1a12;border:1px solid #1f5a3a;border-radius:10px;padding:11px 13px;margin-top:12px;font-size:13px;color:var(--mint);display:none}
+    .quote b{color:#c9ffe4}
+    #submit{margin-top:14px}
+    /* stepper (same pattern as the bridge) */
+    .steps{display:none;margin-top:12px;background:#0d1426;border:1px solid var(--line2);border-radius:10px;padding:10px 12px}
+    .steps .hdr{font-size:12px;color:#cfe;margin-bottom:8px}
+    .step{display:flex;align-items:center;gap:9px;font-size:12.5px;padding:4px 0;color:var(--dim)}
+    .step .dot{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:#24314f;color:#9fb0d0;flex:none}
+    .step.active{color:var(--head)}.step.active .dot{background:var(--blue);color:#fff}
+    .step.done{color:var(--mint)}.step.done .dot{background:var(--green);color:#fff}
+    .step.fail{color:#ff9db0}.step.fail .dot{background:#c0504d;color:#fff}
+    .step .sub{font-size:11px;color:var(--dim2);display:block;margin-top:2px}
+    .stepAct{margin-top:12px}
+    .stepAct .go{width:100%;padding:11px;border:0;border-radius:9px;background:var(--blue);color:#fff;font-weight:700;font-size:14px;cursor:pointer}
+    .stepAct .go:disabled{opacity:.55;cursor:default}
+    .stepAct .go.retry{background:#c0504d}
+    .stepAct .hint{font-size:11.5px;color:var(--dim);margin-top:8px;text-align:center;line-height:1.5}
+    .spin{display:inline-block;width:12px;height:12px;border:2px solid #cfe;border-top-color:transparent;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:6px}
+    @keyframes sp{to{transform:rotate(360deg)}}
+    #status{margin-top:12px;font-size:13px;min-height:18px;color:var(--dim)}
+    #status.err{color:#ff8f8f}#status.ok{color:var(--green2)}
+    #result{margin-top:10px;font-size:13px;line-height:1.55;color:var(--txt)}
+    .tstep{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:8px;background:#0d1426;font-size:12px;color:var(--dim)}
+    .tstep.done{border-color:#1f5a3a;background:#0d1a12;color:var(--mint)}
+    /* locks */
+    .lock{border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:10px;background:#0d1426;font-size:12.5px}
+    .lock .r1{display:flex;justify-content:space-between;color:var(--head);font-size:14px}
+    .lock .r1 b{color:var(--mint)}
+    .lock .r2{color:var(--dim);margin-top:3px}
+    .lock .rs{margin-top:6px;font-size:12px;color:var(--dim);min-height:15px}
+    .lock .rs.ok{color:var(--green2)}.lock .rs.err{color:#ff8f8f}
+    .lock .r3{margin-top:8px;display:flex;gap:8px;flex-wrap:wrap}
+    .lock button{padding:7px 12px;border:0;border-radius:8px;background:var(--blue);color:#fff;font-size:12px;font-weight:600;cursor:pointer}
+    .lock button:disabled{opacity:.5;cursor:not-allowed}
+    .lock button.w{background:var(--green)}
+    .hempty{font-size:12.5px;color:var(--dim2);text-align:center;padding:14px 0}
+    /* history */
+    .hnote{font-size:11.5px;color:#e8c48a;background:#221a10;border:1px solid #6a521f;border-radius:9px;padding:9px 12px;line-height:1.5;margin-bottom:10px}
+    .hitem{border-bottom:1px dashed var(--line);padding:7px 2px;font-size:12px;color:var(--dim)}
+    .hitem b{color:var(--txt)}
+    .hclear{margin-top:8px;font-size:11.5px;color:var(--dim);background:none;border:0;text-decoration:underline;cursor:pointer}
+    .appfine{font-size:11px;color:#6b7ba0;margin-top:14px;line-height:1.5}
+    h4{color:var(--head);font-size:14px;margin-bottom:2px}
+  </style>
+</head>
+<body>
+
+  <!-- ============ FIRST-RUN TERMS GATE (bridge-style) ============ -->
+  <div id="gate">
+    <div class="gate-card card">
+      <h1>Pentagon Chain — Stake $PC</h1>
+      <p>Lock $PC you already earned, for a term you choose, and receive <b style="color:var(--mint)">$PC loyalty rewards on Pentagon Chain</b> — weekly-claimable, in-ecosystem points. Your original $PC comes back to you in full after the term.</p>
+      <div class="banner"><b>In short:</b> rewards are essentially <b>points</b> — $PC on Pentagon Chain has <b>no cash value</b>, cannot leave Pentagon Chain, and is <b>not</b> $PC on Ethereum. Your locked $PC is different: it <b>never leaves Ethereum</b> (it is not bridged) and is <b>redeemable by you, in full, after your term</b>. Scroll the full terms below to enable the button.</div>
+
+      <div class="tosbox" id="tosbox">
+        <h3>What you receive — and don't</h3>
+        <li><b>Rewards you receive:</b> $PC on Pentagon Chain — in-ecosystem points, claimable up to once a week.</li>
+        <li class="no"><b>Rewards are NOT:</b> $PC on Ethereum, cash, or anything withdrawable. Points cannot leave Pentagon Chain. If that's not valuable to you, don't stake.</li>
+        <li><b>Your principal is separate — and it comes back.</b> The $PC you lock <b>stays on Ethereum</b> in the staking contract the whole time — it is <b>never bridged anywhere</b> — and it is <b>redeemable by you, in full, after your term ends</b>. Only the rewards live on Pentagon Chain.</li>
+
+        <h3>Each stake is its own lock</h3>
+        <p>Every stake creates a separate lock with its own amount, term, rate, and unlock date — like a deposit certificate. There is no "top-up" of an existing lock and no extension; to stake more, add another lock (it gets the rates current at that moment).</p>
+
+        <h3>Claiming</h3>
+        <p>Points accrue continuously and are claimable <b>up to once every 7 days per lock</b> (on-chain throttle). Claims are a <b>single transaction on Pentagon Chain only</b> — they never touch Ethereum and nothing crosses chains. Unclaimed points are never lost; accrual stops at your lock's end date and anything accrued remains claimable. Claim transactions pay a small native-$PC gas fee on Pentagon Chain; registered Pentagon Games members with a connected wallet receive their initial gas free.</p>
+
+        <h3>Rates &amp; the tranche schedule</h3>
+        <p>Rates for new locks follow a <b>published tranche schedule</b> enforced on-chain — they step down as the program fills (founder rates first, gone when their tranche fills). <b>An opened lock's rate is fixed for its whole term and can never be changed.</b> In exceptional conditions we may lower future rates below the schedule or close new locks early, with ≥ 7 days' notice — never retroactively. Rewards are paid from a finite, pre-funded pool of already-existing $PC (<b>no new $PC is minted</b>); claims are solvency-limited and pause if the pool is empty until it is topped up. Rewards are discretionary loyalty grants, not interest and not a debt.</p>
+
+        <h3>Eligibility</h3>
+        <p><b>Community members only</b>, staking $PC they already hold — this program rewards people who earned $PC through participation. <b>We do not endorse buying $PC in order to stake.</b> Per-wallet limit 100 $PC. Not available in restricted jurisdictions; you are responsible for eligibility and taxes.</p>
+
+        <h3>Founder's SWAG package</h3>
+        <p>Members with <b>verified VIP status and completed shipping information</b> (via <a href="https://vip.pentagon.games/" target="_blank" rel="noopener">vip.pentagon.games</a>) who lock during Tranche A qualify for a one-time Founder's merch package. Subject to availability and shipping restrictions; one per member; no cash value; not part of the reward rate.</p>
+
+        <h3>Contracts &amp; risk</h3>
+        <p>Your locked $PC sits in a smart contract withdrawable only by your wallet after the term; under current code it is not lent, invested, or accessible to the operator. Contracts are <b>upgradeable by the program admin</b> until the admin permanently and irreversibly locks upgrades on-chain (a planned maturity step); upgrades are announced in advance. Smart-contract, bridge, and blockchain risk apply; provided "as is." This interface is open-source and community-built (<a href="https://github.com/blockchainsuperheroes/pc-stake-frontend" target="_blank" rel="noopener">source</a>) — anyone may review, fork, or self-host it. Non-custodial: you transact directly with the contracts from your own wallet. Always verify you are on the official Pentagon Games domain.</p>
+
+        <h3>No advice; no offer</h3>
+        <p>Nothing here is financial, investment, legal, or tax advice, or an offer to buy any asset. Not a deposit, security, or investment; no financial return is offered or guaranteed. The operator may modify, suspend, or terminate the program prospectively, consistent with prior communications; opened locks keep their rate and their principal-return schedule. Read the <a href="https://pentagon.games/PCtokenomics#not" target="_blank" rel="noopener">$PC tokenomics</a>.</p>
+        <p class="tosend">— End of terms. Thank you for reading. —</p>
+      </div>
+      <p class="scrollhint" id="scrollhint">▼ Scroll through the terms above to enable the button.</p>
+
+      <label class="chk"><input type="checkbox" id="dontshow" checked /> Don't show this again</label>
+      <button id="agree" class="cta" disabled>I agree, understand and continue</button>
+    </div>
+  </div>
+
+  <!-- ============ APP ============ -->
+  <div id="app">
+    <div class="head">
+      <h2>Stake $PC</h2>
+      <span class="tag"><a href="details.html">program guide</a> · <a href="claims.html">claiming</a> · <a href="#" id="showterms">terms</a></span>
+    </div>
+
+    <div class="appcard card">
+      <div class="tranche">
+        <div class="r1"><b id="trTitle">🏆 Founder rates</b><span class="rem" id="trRemain">—</span></div>
+        <div class="bar"><div id="trBar"></div></div>
+        <div class="chips" id="rateChips"></div>
+        <div id="trNext" style="margin-top:9px;padding-top:8px;border-top:1px dashed #1f5a3a;font-size:11px;color:#7f8fb0;line-height:1.6"></div>
+      </div>
+
+      <button id="connect" class="cta">Connect Wallet</button>
+
+      <form id="form" style="display:none">
+        <label class="fld">Amount ($PC — max <span id="maxCap">100</span> per wallet)</label>
+        <div class="row"><input id="amount" type="text" inputmode="decimal" placeholder="0.0" autocomplete="off" /><button type="button" id="max">Max</button></div>
+        <div class="bal">Wallet: <span id="balance">–</span> · locked: <span id="committed">–</span></div>
+
+        <label class="fld">Lock for</label>
+        <select id="term"></select>
+        <div class="quote" id="quote"></div>
+
+        <button id="submit" class="cta" type="submit">Review &amp; stake</button>
+
+        <div class="steps" id="steps">
+          <div class="hdr" id="stepsHdr"></div>
+          <div id="stepList"></div>
+          <div class="stepAct" id="stepAct"></div>
+        </div>
+
+        <div id="status"></div>
+        <div id="result"></div>
+      </form>
+    </div>
+
+    <div class="appcard card" id="locksCard" style="display:none">
+      <h4>My locks</h4>
+      <p class="tag">Each stake is its own lock — read live from the blockchain. Points are claimable up to once a week per lock, entirely on Pentagon Chain (<a href="claims.html">how claiming works →</a>).</p>
+      <div id="lockList"><div class="hempty">Connect your wallet to see your locks.</div></div>
+    </div>
+
+    <div class="appcard card" id="histCard" style="display:none">
+      <h4>Activity on this device</h4>
+      <div class="hnote">📌 Saved <b>only in this browser</b> — cleared browser data means it's gone. The blockchain (My locks above) is always the source of truth.</div>
+      <div id="histList"></div>
+      <button type="button" id="clearHist" class="hclear">Clear activity on this device</button>
+    </div>
+
+    <p class="appfine">Rewards are in-ecosystem $PC points on Pentagon Chain: no cash value, non-transferable off-chain, claimable weekly, solvency-limited · your locked $PC never leaves Ethereum (not bridged) and is redeemable in full after your term · rates follow the published on-chain tranche schedule · <a href="details.html">full program guide</a> · <a href="#" id="showterms2">full terms</a> · open-source, community-built interface (non-custodial, as-is). Verify you're on the official Pentagon Games domain.</p>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js" integrity="sha384-gpR0Q6Hx/O+uevlbpbANbS0LWjbejPV1sqD/8w422l/fW8whGY0EPmKw3uG7ACYP" crossorigin="anonymous"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

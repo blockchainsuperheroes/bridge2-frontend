@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pentagon Chain · Stake $PC — Claiming Rewards</title>
+  <style>
+    :root{--bg:#0a0f1c;--card:#101828;--line:#1f2b47;--line2:#2b3a5e;--txt:#cdd8ee;--head:#e6ebf5;--dim:#8b9cc0;--dim2:#7f8fb0;--green:#16a06a;--green2:#58e08f;--mint:#9fe3bf;--blue:#2a6cf6}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--bg);color:var(--txt);font:14px/1.6 -apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;padding:28px 16px 60px}
+    .wrap{max-width:640px;margin:0 auto}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;margin-bottom:16px}
+    h1{color:var(--head);font-size:21px;margin-bottom:6px}
+    h2{color:var(--head);font-size:15px;margin-bottom:8px}
+    a{color:#8fb0ff}
+    .top{position:sticky;top:0;background:#122036;border:1px solid #2b3a5e;color:#9fb0d0;text-align:center;font-size:12px;padding:7px;border-radius:8px;margin-bottom:16px;z-index:5}
+    .sub{color:var(--dim);font-size:13.5px}
+    .big{background:#0d1a12;border:1px solid #1f5a3a;border-radius:11px;padding:14px;margin-top:12px;font-size:13px;color:var(--mint);line-height:1.65}
+    .big b{color:#c9ffe4}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:12px}
+    .mini{background:#0d1426;border:1px solid var(--line);border-radius:11px;padding:14px}
+    .mini b{color:var(--head)}
+    .mini p{font-size:12.5px;color:var(--dim);margin-top:5px}
+    .steps{counter-reset:s;margin-top:6px}
+    .step{display:flex;gap:12px;padding:10px 0;border-bottom:1px dashed var(--line)}
+    .step:last-child{border-bottom:0}
+    .step .n{counter-increment:s;flex:none;width:26px;height:26px;border-radius:50%;background:#16233f;color:#9fb0d0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
+    .step .n::before{content:counter(s)}
+    .step b{color:var(--head)}
+    .step p{font-size:12.5px;color:var(--dim)}
+    .faq p{font-size:12.5px;color:var(--dim);margin:8px 0}
+    .faq b{color:var(--head);display:block}
+    .amber{background:#221a10;border:1px solid #6a521f;border-radius:11px;padding:12px 14px;font-size:12px;color:#e8c48a;margin-top:12px}
+    .amber b{color:#ffdca0}
+    .cta{display:block;width:100%;margin-top:6px;padding:13px;border:0;border-radius:10px;background:var(--green);color:#fff;font-weight:700;font-size:15px;cursor:pointer;text-align:center;text-decoration:none}
+    .foot{font-size:11px;color:#6b7ba0;margin-top:10px;line-height:1.5;text-align:center}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">💰 Claiming rewards — how it works · <a href="./">← Back to staking</a></div>
+
+  <div class="card">
+    <h1>Claiming your $PC points</h1>
+    <p class="sub">While your $PC is locked, loyalty points accrue <b style="color:var(--mint)">continuously, every second</b>. Claiming moves the accrued points into your wallet balance on Pentagon Chain.</p>
+    <div class="big"><b>One chain, one transaction.</b> Claiming happens <b>entirely on Pentagon Chain</b> — a single, small transaction. It never touches Ethereum, never uses the bridge, and nothing crosses chains. Your wallet just switches network, you confirm once, done.</div>
+  </div>
+
+  <div class="card">
+    <h2>The essentials</h2>
+    <div class="grid">
+      <div class="mini"><b>🗓 How often?</b>
+        <p>Up to <b style="color:var(--mint)">once every 7 days per lock</b>, enforced on-chain. The page shows exactly when each lock's next claim opens.</p></div>
+      <div class="mini"><b>⏳ Miss a week? Nothing lost.</b>
+        <p>Points keep accruing whether you claim or not. Claiming weekly or monthly makes <b>no difference to your total</b> — unclaimed points simply wait for you. Accrual stops at your lock's end date; anything accrued stays claimable after that.</p></div>
+      <div class="mini"><b>⛽ A tiny bit of gas — free to start</b>
+        <p>The claim transaction pays a very small gas fee in native $PC on Pentagon Chain. New to Pentagon Chain? <a href="https://pentagon.games" target="_blank" rel="noopener">Register at Pentagon Games</a> and connect your wallet — registered members receive their <b style="color:var(--mint)">initial gas free</b>, so your first claim just works.</p></div>
+      <div class="mini"><b>🔒 Each lock claims separately</b>
+        <p>Every lock is its own record with its own points and its own weekly timer. Two locks = two claim buttons.</p></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>What the 3 guided steps look like</h2>
+    <div class="steps">
+      <div class="step"><span class="n"></span><div><b>Switch to Pentagon Chain.</b><p>One click — your wallet switches (or adds) the Pentagon Chain network. Approve the switch in the wallet popup.</p></div></div>
+      <div class="step"><span class="n"></span><div><b>Confirm the claim.</b><p>A single transaction on Pentagon Chain. The page shows the exact points amount before you sign.</p></div></div>
+      <div class="step"><span class="n"></span><div><b>Verified on-chain, then you're done.</b><p>The page confirms the payout landed (with a transaction link), and you can switch your wallet back to Ethereum. Claimed points appear in your Pentagon Chain balance.</p></div></div>
+    </div>
+  </div>
+
+  <div class="card faq">
+    <h2>Quick answers</h2>
+    <p><b>Can I claim while my $PC is still locked?</b> Yes — claiming points and the lock on your principal are completely independent. Claim any week you like during (and after) the term.</p>
+    <p><b>Is claiming ever on Ethereum?</b> No. Rewards exist only on Pentagon Chain, so claims are Pentagon Chain transactions only — cheaper and simpler, with no cross-chain step and no bridge risk.</p>
+    <p><b>What if the reward pool is low?</b> Claims are paid from a finite, pre-funded pool. If it were ever short, your claim simply waits (nothing is lost) until the pool is topped up — rewards are solvency-limited by design.</p>
+    <p><b>Do my claimed points ever leave Pentagon Chain?</b> No — points are a closed-loop, in-ecosystem credit with no cash value and no path off-chain. Their value is what they unlock inside Pentagon Chain.</p>
+    <div class="amber"><b>Reminder:</b> your locked principal is a separate thing entirely — it stays on Ethereum, is never bridged, and is redeemable in full after your term on the main page.</div>
+  </div>
+
+  <a class="cta" href="./">Go to staking →</a>
+  <p class="foot">Part of the $PC Commitment Rewards program · <a href="details.html">full program guide</a> · open-source, community-built interface.</p>
+</div>
+</body>
+</html>
