@@ -503,10 +503,19 @@ async function refreshLocks() {
   let list = [], early = false;
   try { list = await vaultRead.positionsOf(account); } catch { el.innerHTML = '<div class="hempty">Could not load locks — refresh in a moment.</div>'; return; }
   try { early = await vaultRead.emergencyUnlock(); } catch {}
+  const doneEl = $('doneList'), doneWrap = $('doneWrap');
+  if (doneEl) doneEl.innerHTML = '';
+  if (doneWrap) { doneWrap.style.display = 'none'; doneWrap.open = false; }
   if (!list.length) { el.innerHTML = '<div class="hempty">No locks yet — your first stake shows up here.</div>'; return; }
   el.innerHTML = '';
   liveLocks = [];
   const now = Math.floor(Date.now() / 1000);
+  const doneCount = list.filter((p) => p.withdrawn).length;
+  if (doneCount && doneWrap) {
+    doneWrap.style.display = 'block';
+    $('doneCount').textContent = doneCount;
+  }
+  if (doneCount === list.length) el.innerHTML = '<div class="hempty">No active locks — start a new one below.</div>';
   list.forEach(async (p, i) => {
     const d = document.createElement('div');
     d.className = 'lock';
@@ -530,7 +539,7 @@ async function refreshLocks() {
       (p.withdrawn ? '' : `<button type="button" class="w" id="wd${i}" ${canWithdraw ? '' : 'disabled'}>Redeem my ${fmtPC(p.amount)} $PC on ${CFG.ethChainName}</button>`) +
       `</div>` +
       (p.withdrawn ? '' : `<div class="rdsub" id="rd${i}"></div>`);
-    el.appendChild(d);
+    (p.withdrawn && doneEl ? doneEl : el).appendChild(d);
     const wd = $('wd' + i); if (wd) wd.onclick = () => withdrawLock(i, p);
     const rd = $('rd' + i);
     if (rd) rd.innerHTML = canWithdraw
@@ -549,26 +558,38 @@ async function refreshLocks() {
       let claimed;
       try { [claimed] = await ledgerRead('totalClaimed', [id]); }
       catch { claimed = (pos.amount * BigInt(pos.rewardRateBps) * (BigInt(pos.lastClaim) - BigInt(pos.start))) / 10000n / 31536000n; }
-      const ready = pend > 0n && now >= Number(nca);
-      // per-day accrual so the (necessarily small) numbers make sense
+      // Dust: below this it costs more gas than it's worth, so a closed lock is
+      // treated as fully settled rather than dangling an unclaimable remainder.
+      const DUST = 10_000_000_000_000n; // 0.00001 $PC
+      const settled = p.withdrawn && pend < DUST;
+      const ready = !settled && pend > 0n && now >= Number(nca);
       const perDay = (p.amount * BigInt(p.rewardRateBps)) / 10000n / 365n;
+      // once the principal is redeemed the lock earns nothing — don't imply it does
       $('meta' + i).innerHTML = `PG Points claimed so far: <b style="color:#ffd76a">${fmtPoints(claimed)}</b>`
-        + ` · earning ≈ ${fmtPoints(perDay)}/day`;
-      // big, bold claimable figure directly above the button
+        + (p.withdrawn ? '' : ` · earning ≈ ${fmtPoints(perDay)}/day`);
       const cb = $('cb' + i);
       cb.classList.toggle('waiting', !ready);
-      cb.innerHTML = ready
-        ? `<span class="cb-label">✅ Claimable now</span>`
-          + `<span class="cb-amt">${fmtPoints(pend)}</span>`
-          + `<span class="cb-unit">PG Points</span>`
-        : `<span class="cb-label">Not yet claimable</span>`
-          + `<span class="cb-amt">${fmtPoints(pend)}</span>`
-          + `<span class="cb-unit">PG Points</span>`
-          + `<div class="cb-sub">${p.withdrawn ? 'lock closed' : pend === 0n ? 'starting to accrue…' : `unlocks in ${fmtDur(Number(nca) - now)} · ${new Date(Number(nca) * 1000).toLocaleTimeString()}`}</div>`;
+      if (settled) {
+        cb.innerHTML = `<span class="cb-label">✓ Fully settled</span>`
+          + `<div class="cb-sub">principal redeemed · all PG Points claimed</div>`;
+      } else {
+        cb.innerHTML = ready
+          ? `<span class="cb-label">✅ Claimable now</span>`
+            + `<span class="cb-amt">${fmtPoints(pend)}</span>`
+            + `<span class="cb-unit">PG Points</span>`
+          : `<span class="cb-label">Not yet claimable</span>`
+            + `<span class="cb-amt">${fmtPoints(pend)}</span>`
+            + `<span class="cb-unit">PG Points</span>`
+            + `<div class="cb-sub">${p.withdrawn ? 'lock closed' : pend === 0n ? 'starting to accrue…' : `unlocks in ${fmtDur(Number(nca) - now)} · ${new Date(Number(nca) * 1000).toLocaleTimeString()}`}</div>`;
+      }
       const btn = $('claim' + i);
-      btn.disabled = !ready;
-      btn.title = ready ? '' : 'Claimable once per interval';
-      btn.onclick = () => claimLock(i, pend);
+      if (settled) btn.remove(); else {
+        btn.disabled = !ready;
+        btn.title = ready ? '' : 'Claimable once per interval';
+        btn.onclick = () => claimLock(i, pend);
+      }
+      // a closed lock with real points left should not stay hidden in the collapsed section
+      if (p.withdrawn && !settled) { const dw = $('doneWrap'); if (dw) dw.open = true; }
       if (!p.withdrawn) {
         liveLocks.push({ i, amount: pos.amount, rateBps: BigInt(pos.rewardRateBps), lastClaim: Number(pos.lastClaim), lockEnd: Number(pos.lockEnd), nca: Number(nca), ready, canWithdraw });
         startTicker();
@@ -616,12 +637,46 @@ async function claimLock(i, pendBefore) {
 }
 
 /* Celebration flash after a successful claim. */
+function closeFlash() { const f = $('flash'); if (f) f.style.display = 'none'; }
+
+/* Celebration flash after a successful claim (gold). */
 function showFlash(amountWei, txHash) {
-  const f = $('flash'); if (!f) return;
-  $("flashAmt").textContent = fmtPoints(amountWei);
-  const a = $('flashTx');
-  if (txHash) { a.style.display = 'inline'; a.href = `${CFG.pcExplorerBase}/tx/${txHash}?tab=internal_txns`; }
-  else a.style.display = 'none';
+  const f = $('flash'), c = $('flashCard'); if (!f || !c) return;
+  c.className = 'flash-card';
+  c.innerHTML =
+    `<div class="flash-emoji">🎉</div>`
+    + `<h2>Congratulations!</h2>`
+    + `<p class="flash-sub">You received</p>`
+    + `<div class="flash-amt">${fmtPoints(amountWei)} <span class="flash-unit">PG Points</span></div>`
+    + `<p class="flash-note">exact amount paid on-chain · $PC on Pentagon Chain — in-ecosystem points, no cash value</p>`
+    + (txHash ? `<p class="flash-links"><a target="_blank" rel="noopener" href="${CFG.pcExplorerBase}/tx/${txHash}?tab=internal_txns">View transaction ↗</a></p>` : '')
+    + `<button type="button" id="flashClose" class="cta">Nice — continue</button>`;
+  $('flashClose').onclick = closeFlash;
+  f.style.display = 'flex';
+}
+
+/* Farewell flash after principal is redeemed (blue) — thanks them, shows the
+   exact returned amount + Ethereum tx, and offers a way straight back in. */
+function showRedeemFlash(amountWei, txHash) {
+  const f = $('flash'), c = $('flashCard'); if (!f || !c) return;
+  c.className = 'flash-card redeem';
+  c.innerHTML =
+    `<div class="flash-emoji">👋</div>`
+    + `<h2>Your $PC is back with you</h2>`
+    + `<p class="flash-sub">Returned to your wallet on ${esc(CFG.ethChainName)}</p>`
+    + `<div class="flash-amt">${fmtPC(amountWei)} <span class="flash-unit">$PC</span></div>`
+    + `<p class="flash-note">full principal · nothing withheld</p>`
+    + (txHash ? `<p class="flash-links"><a target="_blank" rel="noopener" href="${CFG.explorerBase}/tx/${txHash}">View transaction ↗</a></p>` : '')
+    + `<div class="thanks">🙏 <b>Thank you for your loyalty.</b> Your commitment helped strengthen the Pentagon ecosystem — and every PG Point you earned stays yours. Sorry to see this one go; you're welcome back any time.</div>`
+    + `<div class="flash-btns">`
+    + `<button type="button" id="flashAgain" class="cta">Stake again →</button>`
+    + `<button type="button" id="flashClose" class="cta ghost">Done</button>`
+    + `</div>`;
+  $('flashClose').onclick = closeFlash;
+  $('flashAgain').onclick = () => {
+    closeFlash();
+    const a = $('amount'); if (a) { a.focus(); a.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+  };
   f.style.display = 'flex';
 }
 
@@ -637,7 +692,8 @@ async function withdrawLock(i, p) {
     for (let k = 0; k < 60; k++) { try { if ((await vaultRead.positionsOf(account))[i].withdrawn) { ok = true; break; } } catch {} await sleep(3000); }
     if (!ok) { rowStatus(i, `Sent — still confirming. <a target="_blank" rel="noopener" href="${CFG.explorerBase}/tx/${tx.hash}">view tx</a>`, ''); return; }
     rowStatus(i, `✅ ${fmtPC(p.amount)} $PC returned to your wallet · <a target="_blank" rel="noopener" href="${CFG.explorerBase}/tx/${tx.hash}">tx</a>`, 'ok');
-    addHist({ type: 'withdraw', text: `Withdrew ${fmtPC(p.amount)} $PC principal (lock #${i})`, tx: tx.hash });
+    addHist({ type: 'withdraw', text: `Redeemed ${fmtPC(p.amount)} $PC principal (lock #${i})`, tx: tx.hash });
+    showRedeemFlash(p.amount, tx.hash);
     await Promise.all([refreshBalances(), refreshLocks()]);
   } catch (err) {
     console.error(err);
@@ -676,7 +732,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     quote();
   });
   $('clearHist').addEventListener('click', clearHist);
-  $('flashClose').addEventListener('click', () => { $('flash').style.display = 'none'; });
+  $('flash').addEventListener('click', (e) => { if (e.target === $('flash')) closeFlash(); }); // click backdrop to dismiss
 
   if (window.ethereum) window.ethereum.on?.('accountsChanged', () => location.reload());
 
