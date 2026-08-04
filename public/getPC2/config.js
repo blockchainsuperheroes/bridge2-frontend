@@ -21,7 +21,7 @@ window.PCSTAKE_CONFIG = {
 
   // Same-origin Pages Function proxying read-only eth_call to the ledger
   // (pentagon.games sends no CORS; wallet writes are unaffected).
-  ledgerRpcProxy: '/stake/rpc',
+  ledgerRpcProxy: '/getPC2/rpc',
 
   vipUrl: 'https://vip.pentagon.games/',
   termsAnchor: 'https://pentagon.games/PCtokenomics#not',
