@@ -20,6 +20,7 @@ const VAULT = [
   'function trancheSchedule() view returns (uint256[] ceilings, uint16[4][] rates, uint256 staked)',
   'function stakedByStaker(address) view returns (uint256)',
   'function maxStakePerStaker() view returns (uint256)',
+  'function emergencyUnlock() view returns (bool)', // owner switch: allows early principal redemption
 ];
 const LEDGER = [
   'function pending(bytes32) view returns (uint256)',
