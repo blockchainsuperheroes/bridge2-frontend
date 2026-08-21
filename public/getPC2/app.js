@@ -62,7 +62,15 @@ let provider, signer, account, vault, pcToken;
 // Pentagon Chain mid-claim (that switch used to break "My locks").
 let ethRead, vaultRead, pcTokenRead;
 function initReadProviders() {
-  ethRead = new ethers.JsonRpcProvider(CFG.ethRpcUrl || 'https://ethereum-rpc.publicnode.com', parseInt(CFG.ethChainIdHex, 16));
+  const chainId = parseInt(CFG.ethChainIdHex, 16);
+  const urls = CFG.ethRpcUrls?.length ? CFG.ethRpcUrls : [CFG.ethRpcUrl || 'https://eth.drpc.org'];
+  // staticNetwork: don't let a dead endpoint stall startup on network detection.
+  const subs = urls.map((url, i) => ({
+    provider: new ethers.JsonRpcProvider(url, chainId, { staticNetwork: true }),
+    priority: i + 1, weight: 1, stallTimeout: 2500,
+  }));
+  // quorum 1 — first healthy endpoint answers; failed ones are skipped.
+  ethRead = subs.length > 1 ? new ethers.FallbackProvider(subs, chainId, { quorum: 1 }) : subs[0].provider;
   pcTokenRead = new ethers.Contract(CFG.pcTokenAddress, ERC20, ethRead);
   vaultRead = notDeployed() ? null : new ethers.Contract(CFG.stakeVaultAddress, VAULT, ethRead);
 }
@@ -150,6 +158,12 @@ function renderSchedule(ceilings, rates, staked) {
     $('trRemain').textContent = 'new locks are closed';
     $('trBar').style.width = '100%';
   }
+  // Program TVL — denominated in $PC only. Deliberately NOT a USD figure:
+  // PG Points have no cash value, the pools are thin enough that a price-based
+  // number would be manipulable, and Uniswap LP is a different pool entirely.
+  const cap = ceilings[ceilings.length - 1];
+  $('tvlAmt').textContent = fmtPC(staked);
+  $('tvlCap').textContent = `${(Number(staked * 10000n / cap) / 100).toFixed(1)}% of the ${fmtPC(cap)} program cap`;
   const chips = $('rateChips');
   chips.innerHTML = '';
   if (open) CFG.terms.forEach((t, ti) => {

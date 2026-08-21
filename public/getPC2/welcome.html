@@ -47,6 +47,17 @@
     .nobridge{margin-top:16px;background:#0d1a12;border:1px solid #1f5a3a;border-radius:14px;padding:20px;text-align:center}
     .nobridge .big2{font-size:21px;font-weight:800;color:var(--green2)}
     .nobridge p{font-size:13.5px;color:var(--mint);margin-top:6px}
+    .weekly{margin-top:16px;background:linear-gradient(160deg,#1a1508,#141005);border:1px solid #8a6d1f;border-radius:14px;padding:20px;text-align:center}
+    .weekly .big2{font-size:20px;font-weight:800;color:var(--gold)}
+    .weekly .wk{background:linear-gradient(90deg,#ffd76a,#58e08f);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+    .weekly p{font-size:13.5px;color:#e8d9ab;margin-top:8px}
+    .wkrow{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;margin-top:14px}
+    .wkbox{background:#0d1426;border:1px solid #6a521f;border-radius:9px;padding:8px 11px;min-width:74px}
+    .wkbox b{display:block;font-size:12px;color:#ffd76a}
+    .wkbox span{font-size:10.5px;color:#96825a}
+    .wkbox.on{border-color:#58e08f;background:#0d1a12}
+    .wkbox.on b{color:#58e08f}.wkbox.on span{color:#7fae95}
+    .wkarrow{color:#6a521f;font-size:13px}
     /* why */
     .why{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:14px}
     .w{background:#0d1426;border:1px solid var(--line);border-radius:12px;padding:15px}
@@ -76,7 +87,7 @@
     <span class="kicker">Members only · $PC you already earned</span>
     <h1>Your $PC finally <span class="g">does something</span>.</h1>
     <p class="slogan">⬟ Embrace the Pentagon AI Era</p>
-    <p class="lede">Lock the $PC you earned through Pentagon Games. Get <b style="color:var(--mint)">PG Points</b> every week. Keep your $PC — you get all of it back.</p>
+    <p class="lede">Lock the $PC you earned through Pentagon Games and <b style="color:var(--mint)">Get PC every week</b> — fresh PG Points to claim, week after week. Keep your $PC: you get all of it back.</p>
   </div>
 
   <div class="big">
@@ -89,12 +100,26 @@
   <div class="three">
     <div class="t"><div class="n gold">0</div><div class="l">bridging required<br>your $PC never leaves Ethereum</div></div>
     <div class="t"><div class="n">100%</div><div class="l">of your $PC returned<br>when your term ends</div></div>
-    <div class="t"><div class="n">Weekly</div><div class="l">claim your PG Points<br>as often as once a week</div></div>
+    <div class="t"><div class="n gold">Weekly</div><div class="l"><b style="color:var(--mint)">Get PC every week</b><br>claim your PG Points once a week, every week</div></div>
   </div>
 
   <div class="nobridge">
     <div class="big2">🔒 No bridging. At all.</div>
     <p>This is the part people ask about most. Your $PC <b>stays on Ethereum</b>, locked in a contract only <i>you</i> can withdraw from. We never move it, never lend it, never touch it. Only the <b>rewards</b> live on Pentagon Chain.</p>
+  </div>
+
+  <div class="weekly">
+    <div class="big2">🗓 Get PC — <span class="wk">every single week</span></div>
+    <p>This isn't a one-off drop. From the moment your lock opens, PG Points build every second — and you can <b>claim them once a week, every week</b>, for your whole term. A weekly rhythm of rewards for staying with us.</p>
+    <div class="wkrow">
+      <div class="wkbox"><b>Week 1</b><span>claim</span></div>
+      <div class="wkarrow">→</div>
+      <div class="wkbox"><b>Week 2</b><span>claim</span></div>
+      <div class="wkarrow">→</div>
+      <div class="wkbox"><b>Week 3</b><span>claim</span></div>
+      <div class="wkarrow">→</div>
+      <div class="wkbox on"><b>…every week</b><span>for your full term</span></div>
+    </div>
   </div>
 
   <div class="card">
@@ -103,7 +128,7 @@
     <div class="steps">
       <div class="st"><span class="n"></span><div><b>Pick an amount and a term</b><p>Anything up to 100 $PC, locked for 3 months to 2 years. Longer term = higher rate.</p></div></div>
       <div class="st"><span class="n"></span><div><b>Lock it (stays on Ethereum)</b><p>Two wallet prompts and you're done. Your rate is fixed on-chain the moment it confirms.</p></div></div>
-      <div class="st"><span class="n"></span><div><b>PG Points build up every second</b><p>Watch them tick up. Claim them on Pentagon Chain up to once a week.</p></div></div>
+      <div class="st"><span class="n"></span><div><b>Get PC every week</b><p>PG Points build every second — watch them tick up, then claim on Pentagon Chain <b>once a week, every week</b>.</p></div></div>
       <div class="st"><span class="n"></span><div><b>Take your $PC back</b><p>When your term ends, withdraw the full amount. Only your wallet can.</p></div></div>
     </div>
   </div>
