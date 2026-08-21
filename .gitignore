@@ -3,3 +3,5 @@ node_modules/
 *.pem
 *.key
 .DS_Store
+admin.html
+admin.js

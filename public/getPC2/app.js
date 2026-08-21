@@ -66,7 +66,8 @@ function initReadProviders() {
   const urls = CFG.ethRpcUrls?.length ? CFG.ethRpcUrls : [CFG.ethRpcUrl || 'https://eth.drpc.org'];
   // staticNetwork: don't let a dead endpoint stall startup on network detection.
   const subs = urls.map((url, i) => ({
-    provider: new ethers.JsonRpcProvider(url, chainId, { staticNetwork: true }),
+    // batchMaxCount:1 — some free RPCs (drpc) reject batches >3, which broke reads
+    provider: new ethers.JsonRpcProvider(url, chainId, { staticNetwork: true, batchMaxCount: 1 }),
     priority: i + 1, weight: 1, stallTimeout: 2500,
   }));
   // quorum 1 — first healthy endpoint answers; failed ones are skipped.
