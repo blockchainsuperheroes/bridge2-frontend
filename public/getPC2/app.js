@@ -229,10 +229,10 @@ function quote() {
   const bps = o ? Number(o.dataset.bps || 0) : 0;
   if (!amt || !bps) { q.style.display = 'none'; return; }
   const t = CFG.terms.find((x) => x.days === Number(o.value));
-  const total = amt * bps / 10000 * (t.days / 365), weekly = amt * bps / 10000 / 52;
+  const total = amt * bps / 10000 * (t.days / 365), weekly = amt * bps / 10000 * (7 / 365); // 7/365 matches the contract exactly
   const unlock = new Date(Date.now() + t.days * 86400000).toLocaleDateString();
   q.style.display = 'block';
-  q.innerHTML = `≈ <b>${weekly.toFixed(4)} $PC points/week</b> → <b>${total.toFixed(2)} points</b> over ${t.label} · your ${amt} $PC unlocks ${unlock}. <span style="color:#7fae95">(Points live on Pentagon Chain — no cash value, not withdrawable.)</span>`;
+  q.innerHTML = `≈ <b>${weekly.toFixed(4)} $PC/week</b> → <b>${total.toFixed(2)} $PC</b> over ${t.label} · your ${amt} $PC unlocks ${unlock}. <span style="color:#7fae95">(Lives on Pentagon Chain — no cash value, not withdrawable.)</span>`;
 }
 
 /* Ensure the wallet is on a given chain, switching (or adding) it automatically
@@ -458,12 +458,12 @@ async function finalize() {
   let ticks = 0;
   clearInterval(window._track);
   window._track = setInterval(async () => {
-    if (++ticks > 120) { clearInterval(window._track); const t = $('tOpen'); if (t) t.innerHTML = 'Still opening — check "My locks" later, points will backfill from your lock time.'; return; }
+    if (++ticks > 120) { clearInterval(window._track); const t = $('tOpen'); if (t) t.innerHTML = 'Still opening — check "My locks" later, rewards will backfill from your lock time.'; return; }
     try {
       const p = await ledgerRead('positions', [id]);
       if (p.open) {
         clearInterval(window._track);
-        const t = $('tOpen'); if (t) { t.classList.add('done'); t.innerHTML = `✅ Rewards position open on ${CFG.pcChainName} — points accrue from your lock time; claim up to once a week under "My locks".`; }
+        const t = $('tOpen'); if (t) { t.classList.add('done'); t.innerHTML = `✅ Rewards position open on ${CFG.pcChainName} — rewards accrue from your lock time; claim up to once a week under "My locks".`; }
         refreshLocks();
       }
     } catch {}
@@ -663,7 +663,7 @@ function showFlash(amountWei, txHash) {
     + `<h2>Congratulations!</h2>`
     + `<p class="flash-sub">You received</p>`
     + `<div class="flash-amt">${fmtPoints(amountWei)} <span class="flash-unit">$PC</span></div>`
-    + `<p class="flash-note">exact amount paid on-chain · $PC on Pentagon Chain — in-ecosystem points, no cash value</p>`
+    + `<p class="flash-note">exact amount paid on-chain · native $PC on Pentagon Chain, sent to your wallet</p>`
     + (txHash ? `<p class="flash-links"><a target="_blank" rel="noopener" href="${CFG.pcExplorerBase}/tx/${txHash}?tab=internal_txns">View transaction ↗</a></p>` : '')
     + `<button type="button" id="flashClose" class="cta">Nice — continue</button>`;
   $('flashClose').onclick = closeFlash;
@@ -682,7 +682,7 @@ function showRedeemFlash(amountWei, txHash) {
     + `<div class="flash-amt">${fmtPC(amountWei)} <span class="flash-unit">$PC</span></div>`
     + `<p class="flash-note">full principal · nothing withheld</p>`
     + (txHash ? `<p class="flash-links"><a target="_blank" rel="noopener" href="${CFG.explorerBase}/tx/${txHash}">View transaction ↗</a></p>` : '')
-    + `<div class="thanks">🙏 <b>Thank you for your loyalty.</b> Your commitment helped strengthen the Pentagon ecosystem — and every PG Point you earned stays yours. Sorry to see this one go; you're welcome back any time.</div>`
+    + `<div class="thanks">🙏 <b>Thank you for your loyalty.</b> Your commitment helped strengthen the Pentagon ecosystem — and every $PC you earned stays yours. Sorry to see this one go; you're welcome back any time.</div>`
     + `<div class="flash-btns">`
     + `<button type="button" id="flashAgain" class="cta">Stake again →</button>`
     + `<button type="button" id="flashClose" class="cta ghost">Done</button>`
