@@ -614,10 +614,35 @@ async function refreshLocks() {
 }
 
 /* Claim — guided, step-by-step in the lock row. */
+/* Off-chain policy pre-check. Advisory only — the contract is the real guard —
+   but it catches things the chain can't see (e.g. a position with no matching
+   Ethereum stake) and volume limits, so we decline early with a readable reason
+   instead of letting the user sign into an opaque revert.
+   Fails OPEN: if the check itself is unreachable we let the claim proceed. */
+async function policyCheck(i) {
+  if (!CFG.policyUrl) return { ok: true };
+  try {
+    const u = new URL(CFG.policyUrl, location.href);
+    u.searchParams.set('staker', account);
+    u.searchParams.set('posId', String(i));
+    const r = await fetch(u, { cache: 'no-store' });
+    const j = await r.json();
+    return j && typeof j.ok === 'boolean' ? j : { ok: true };
+  } catch { return { ok: true }; }
+}
+
 async function claimLock(i, pendBefore) {
   const btn = $('claim' + i); if (btn) btn.disabled = true;
   try {
     if (CFG.pcChainIdHex === '0x0') { rowStatus(i, 'Pentagon Chain network config pending.', 'err'); return; }
+    rowStatus(i, spin('Checking your claim…'));
+    const pol = await policyCheck(i);
+    if (!pol.ok) {
+      const why = (pol.reasons || []).filter((r) => r !== 'OK').join(' ');
+      rowStatus(i, `⚠️ ${esc(why || 'This claim cannot be processed right now.')} <span style="color:#7f8fb0">(code CLAIM-POLICY)</span>`, 'err');
+      if (btn) btn.disabled = false;
+      return;
+    }
     rowStatus(i, spin(`Step 1 of 3 — switching your wallet to ${CFG.pcChainName}… (approve the switch in your wallet)`));
     await ensurePcChain();
     rowStatus(i, spin('Step 2 of 3 — confirm the claim in your wallet…'));

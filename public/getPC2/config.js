@@ -30,6 +30,10 @@ window.PCSTAKE_CONFIG = {
   // Same-origin Pages Function proxying read-only eth_call to the ledger
   // (pentagon.games sends no CORS; wallet writes are unaffected).
   ledgerRpcProxy: '/getPC2/rpc',
+  // Off-chain claim policy check (advisory; the on-chain budget is the real
+  // guard). Verifies the mirrored position is backed by a live Ethereum stake —
+  // the one check Pentagon Chain cannot do — plus 24h volume limits.
+  policyUrl: '/getPC2/policy',
 
   vipUrl: 'https://vip.pentagon.games/',
   termsAnchor: 'https://pentagon.games/PCtokenomics#not',
