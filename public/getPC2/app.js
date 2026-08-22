@@ -38,7 +38,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const spin = (t) => `<span class="spin"></span>${t}`;
 const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 const fmtPC = (v) => (+ethers.formatUnits(v, 18)).toLocaleString(undefined, { maximumFractionDigits: 4 });
-// PG Points accrue slowly (1 $PC @ 14% ≈ 0.00038/day), so 4 decimals renders "0".
+// $PC accrue slowly (1 $PC @ 14% ≈ 0.00038/day), so 4 decimals renders "0".
 // Use adaptive precision so small-but-real balances are always visible.
 function fmtPoints(v) {
   const n = +ethers.formatUnits(v, 18);
@@ -160,7 +160,7 @@ function renderSchedule(ceilings, rates, staked) {
     $('trBar').style.width = '100%';
   }
   // Program TVL — denominated in $PC only. Deliberately NOT a USD figure:
-  // PG Points have no cash value, the pools are thin enough that a price-based
+  // $PC have no cash value, the pools are thin enough that a price-based
   // number would be manipulable, and Uniswap LP is a different pool entirely.
   const cap = ceilings[ceilings.length - 1];
   $('tvlAmt').textContent = fmtPC(staked);
@@ -546,11 +546,11 @@ async function refreshLocks() {
     d.innerHTML =
       `<div class="r1"><span>Lock #${i} · <b>${fmtPC(p.amount)} $PC</b> @ ${rate}%</span><span>${Number(p.termDays)}d</span></div>` +
       `<div class="r2">${stateTxt}</div>` +
-      `<div class="r2" id="meta${i}">PG Points: checking…</div>` +
+      `<div class="r2" id="meta${i}">$PC: checking…</div>` +
       `<div class="claimbox waiting" id="cb${i}"><span class="cb-label">Claimable</span><span class="cb-amt">…</span></div>` +
       `<div class="rs" id="rs${i}"></div>` +
       `<div class="r3">` +
-      `<button type="button" id="claim${i}" disabled>Claim PG Points ($PC on Pentagon Chain)</button>` +
+      `<button type="button" id="claim${i}" disabled>Claim $PC (Pentagon Chain)</button>` +
       (p.withdrawn ? '' : `<button type="button" class="w" id="wd${i}" ${canWithdraw ? '' : 'disabled'}>Redeem my ${fmtPC(p.amount)} $PC on ${CFG.ethChainName}</button>`) +
       `</div>` +
       (p.withdrawn ? '' : `<div class="rdsub" id="rd${i}"></div>`);
@@ -580,21 +580,21 @@ async function refreshLocks() {
       const ready = !settled && pend > 0n && now >= Number(nca);
       const perDay = (p.amount * BigInt(p.rewardRateBps)) / 10000n / 365n;
       // once the principal is redeemed the lock earns nothing — don't imply it does
-      $('meta' + i).innerHTML = `PG Points claimed so far: <b style="color:#ffd76a">${fmtPoints(claimed)}</b>`
+      $('meta' + i).innerHTML = `$PC claimed so far: <b style="color:#ffd76a">${fmtPoints(claimed)}</b>`
         + (p.withdrawn ? '' : ` · earning ≈ ${fmtPoints(perDay)}/day`);
       const cb = $('cb' + i);
       cb.classList.toggle('waiting', !ready);
       if (settled) {
         cb.innerHTML = `<span class="cb-label">✓ Fully settled</span>`
-          + `<div class="cb-sub">principal redeemed · all PG Points claimed</div>`;
+          + `<div class="cb-sub">principal redeemed · all $PC claimed</div>`;
       } else {
         cb.innerHTML = ready
           ? `<span class="cb-label">✅ Claimable now</span>`
             + `<span class="cb-amt">${fmtPoints(pend)}</span>`
-            + `<span class="cb-unit">PG Points</span>`
+            + `<span class="cb-unit">$PC</span>`
           : `<span class="cb-label">Not yet claimable</span>`
             + `<span class="cb-amt">${fmtPoints(pend)}</span>`
-            + `<span class="cb-unit">PG Points</span>`
+            + `<span class="cb-unit">$PC</span>`
             + `<div class="cb-sub">${p.withdrawn ? 'lock closed' : pend === 0n ? 'starting to accrue…' : `unlocks in ${fmtDur(Number(nca) - now)} · ${new Date(Number(nca) * 1000).toLocaleTimeString()}`}</div>`;
       }
       const btn = $('claim' + i);
@@ -609,7 +609,7 @@ async function refreshLocks() {
         liveLocks.push({ i, amount: pos.amount, rateBps: BigInt(pos.rewardRateBps), lastClaim: Number(pos.lastClaim), lockEnd: Number(pos.lockEnd), nca: Number(nca), ready, canWithdraw });
         startTicker();
       }
-    } catch { $('meta' + i).textContent = 'PG Points: opening on Pentagon Chain… (check back shortly)'; }
+    } catch { $('meta' + i).textContent = '$PC: opening on Pentagon Chain… (check back shortly)'; }
   });
 }
 
@@ -639,8 +639,8 @@ async function claimLock(i, pendBefore) {
         try { const parsed = ledger.interface.parseLog(lg); if (parsed?.name === 'RewardClaimed') { exact = parsed.args.amount; break; } } catch {}
       }
     } catch {}
-    rowStatus(i, `✅ Claimed ${fmtPoints(exact)} PG Points · <a target="_blank" rel="noopener" href="${CFG.pcExplorerBase}/tx/${tx.hash}?tab=internal_txns">tx</a> · you can switch your wallet back to ${CFG.ethChainName}.`, 'ok');
-    addHist({ type: 'claim', text: `Claimed ${fmtPoints(exact)} PG Points (lock #${i})`, tx: tx.hash, pcTx: true });
+    rowStatus(i, `✅ Claimed ${fmtPoints(exact)} $PC · <a target="_blank" rel="noopener" href="${CFG.pcExplorerBase}/tx/${tx.hash}?tab=internal_txns">tx</a> · you can switch your wallet back to ${CFG.ethChainName}.`, 'ok');
+    addHist({ type: 'claim', text: `Claimed ${fmtPoints(exact)} $PC (lock #${i})`, tx: tx.hash, pcTx: true });
     showFlash(exact, tx.hash);
     refreshLocks();
   } catch (err) {
@@ -662,7 +662,7 @@ function showFlash(amountWei, txHash) {
     `<div class="flash-emoji">🎉</div>`
     + `<h2>Congratulations!</h2>`
     + `<p class="flash-sub">You received</p>`
-    + `<div class="flash-amt">${fmtPoints(amountWei)} <span class="flash-unit">PG Points</span></div>`
+    + `<div class="flash-amt">${fmtPoints(amountWei)} <span class="flash-unit">$PC</span></div>`
     + `<p class="flash-note">exact amount paid on-chain · $PC on Pentagon Chain — in-ecosystem points, no cash value</p>`
     + (txHash ? `<p class="flash-links"><a target="_blank" rel="noopener" href="${CFG.pcExplorerBase}/tx/${txHash}?tab=internal_txns">View transaction ↗</a></p>` : '')
     + `<button type="button" id="flashClose" class="cta">Nice — continue</button>`;
