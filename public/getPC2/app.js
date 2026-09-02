@@ -473,6 +473,32 @@ async function finalize() {
 /* ---------------- locks: list, claim, withdraw ---------------- */
 const rowStatus = (i, msg, cls = '') => { const el = $('rs' + i); if (el) { el.innerHTML = msg; el.className = 'rs ' + cls; } };
 
+/* Capacity / risk-control holds are NOT failures — the program is working as
+   designed and the member has lost nothing. Show them calmly in amber with a
+   route to support, never as a red error. */
+const HOLDS = [
+  { re: /reward pool low|pool low|insufficient pool|failed to send|transfer failed/i,
+    msg: 'Rewards are being topped up right now, so claims are paused for a short while.' },
+  { re: /daily cap|payout cap|per-day|exceeds daily/i,
+    msg: 'The programme has hit its daily payout limit — a safety cap that protects the reward pool.' },
+  { re: /attestation expired|not attested/i,
+    msg: 'Your lock needs its routine re-check before the next claim. This is automatic.' },
+  { re: /24h claim limit|24h payout limit|Program-wide/i,
+    msg: 'You have reached the 24-hour claim limit for this wallet.' },
+  { re: /paused/i,
+    msg: 'Claims are paused briefly while we carry out maintenance.' },
+];
+const holdFor = (text) => (HOLDS.find((h) => h.re.test(String(text || ''))) || null);
+/* amber "expected hold" notice — reassures first, then offers support */
+function holdNotice(reason) {
+  return `<span class="hold">⏳ <b>${esc(reason)}</b><br>`
+    + `Nothing is lost — your rewards keep accruing every second and will be waiting when claiming reopens. `
+    + `Your locked $PC is unaffected and is never touched by this.<br>`
+    + `<span class="hold-sub">Usually resolves within a few hours. `
+    + `Need help or expecting a large claim? `
+    + `<a href="${CFG.discordUrl}" target="_blank" rel="noopener">Ask us on Discord</a> and we'll sort it out.</span></span>`;
+}
+
 /* Live claimable ticker — recomputes locally from on-chain values (no RPC per
    tick) so the figure visibly grows, which is also why the claimed amount ends
    up slightly higher than what was on screen when you pressed the button. */
@@ -639,7 +665,10 @@ async function claimLock(i, pendBefore) {
     const pol = await policyCheck(i);
     if (!pol.ok) {
       const why = (pol.reasons || []).filter((r) => r !== 'OK').join(' ');
-      rowStatus(i, `⚠️ ${esc(why || 'This claim cannot be processed right now.')} <span style="color:#7f8fb0">(code CLAIM-POLICY)</span>`, 'err');
+      const hold = holdFor(why);
+      if (hold) rowStatus(i, holdNotice(hold.msg), 'hold');
+      else rowStatus(i, `⚠️ ${esc(why || 'This claim cannot be processed right now.')} `
+        + `<span style="color:#7f8fb0">(code CLAIM-POLICY) · <a href="${CFG.discordUrl}" target="_blank" rel="noopener">get help</a></span>`, 'err');
       if (btn) btn.disabled = false;
       return;
     }
@@ -671,7 +700,11 @@ async function claimLock(i, pendBefore) {
   } catch (err) {
     console.error(err);
     const code = /ACTION_REJECTED|user rejected|4001/i.test(err?.message || '') ? 'CLAIM-REJECTED' : /once per interval/i.test(err?.message || '') ? 'CLAIM-THROTTLED' : /pool low/i.test(err?.message || '') ? 'CLAIM-POOL' : 'CLAIM-FAIL';
-    rowStatus(i, `⚠️ ${esc(niceErr(err))} <span style="color:#7f8fb0">(code ${code})</span>`, 'err');
+    const raw = err?.shortMessage || err?.reason || err?.info?.error?.message || err?.message || '';
+    const hold = holdFor(raw);
+    if (hold) { rowStatus(i, holdNotice(hold.msg), 'hold'); }
+    else rowStatus(i, `⚠️ ${esc(niceErr(err))} <span style="color:#7f8fb0">(code ${code}) · `
+      + `<a href="${CFG.discordUrl}" target="_blank" rel="noopener">get help</a></span>`, 'err');
     if (btn) btn.disabled = false;
   }
 }
