@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow, noarchive" />
+  <title>GetPC 2 — Ops Console</title>
+  <style>
+    :root{--bg:#0a0f1c;--card:#101828;--line:#1f2b47;--line2:#2b3a5e;--txt:#cdd8ee;--head:#e6ebf5;
+      --dim:#8b9cc0;--dim2:#7f8fb0;--green:#16a06a;--green2:#58e08f;--mint:#9fe3bf;--gold:#ffd76a;
+      --red:#c0504d;--amber:#e0a26a;--amberbg:#221a10;--amberline:#6a521f}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--bg);color:var(--txt);font:14px/1.6 -apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;padding:22px 14px 70px}
+    .wrap{max-width:900px;margin:0 auto}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:18px;margin-bottom:14px}
+    h1{color:var(--head);font-size:21px}
+    h2{color:var(--head);font-size:15px;margin-bottom:3px}
+    a{color:#8fb0ff}
+    code{background:#0b1120;border:1px solid var(--line2);border-radius:5px;padding:1px 6px;font-size:12px;word-break:break-all}
+    .sec{font-size:11.5px;color:var(--dim2);margin-top:6px;line-height:1.55}
+    /* ---- the headline "what should I do" banner ---- */
+    #verdict{border-radius:13px;padding:18px 20px;margin-bottom:16px;border:1px solid}
+    #verdict.ok{background:#0d1a12;border-color:#1f5a3a}
+    #verdict.warn{background:var(--amberbg);border-color:var(--amberline)}
+    #verdict.act{background:#2a1512;border-color:#7a2f2f}
+    #verdict h2{font-size:19px;margin-bottom:6px}
+    #verdict.ok h2{color:var(--green2)}
+    #verdict.warn h2{color:#ffdca0}
+    #verdict.act h2{color:#ffb0b0}
+    #vlist{margin-top:9px}
+    #vlist li{list-style:none;font-size:13px;padding:5px 0 5px 22px;position:relative;color:var(--txt)}
+    #vlist li::before{content:"→";position:absolute;left:2px;color:var(--gold)}
+    #vlist li.done::before{content:"✓";color:var(--green2)}
+    #vlist li b{color:var(--head)}
+    table{width:100%;border-collapse:collapse;font-size:13px;margin-top:9px}
+    th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--dim2);padding:7px 8px;border-bottom:1px solid var(--line2)}
+    td{padding:8px;border-bottom:1px solid var(--line);vertical-align:middle}
+    td.k{color:var(--dim);white-space:nowrap}
+    .ok{color:var(--green2)}.bad{color:#ff9db0}.warn{color:var(--amber)}
+    .big{font-size:26px;font-weight:800;color:var(--mint);line-height:1.2}
+    .kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:10px}
+    .kpi div{background:#0d1426;border:1px solid var(--line);border-radius:10px;padding:11px 13px}
+    .kpi .l{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--dim2)}
+    .kpi .v{font-size:18px;font-weight:700;color:var(--head);margin-top:2px}
+    button{padding:8px 12px;border:0;border-radius:8px;background:#2a6cf6;color:#fff;font-size:12.5px;font-weight:600;cursor:pointer}
+    button:disabled{opacity:.4;cursor:not-allowed}
+    button.go{background:var(--green)}button.danger{background:var(--red)}
+    button.ghost{background:#16233f;border:1px solid var(--line2);color:#9fb0d0}
+    input{background:#0b1120;border:1px solid var(--line2);border-radius:7px;color:var(--head);padding:8px 10px;font-size:13px;max-width:200px}
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+    #log{margin-top:12px;font-size:12.5px;min-height:20px;color:var(--dim)}
+    #log.err{color:#ff8f8f}#log.ok{color:var(--green2)}
+    .chain{font-size:10.5px;color:var(--gold);border:1px solid #6a521f;background:#221a10;border-radius:99px;padding:2px 8px;margin-left:6px}
+    .hist{max-height:340px;overflow-y:auto;margin-top:8px}
+    .hist table{margin-top:0}
+    .hist th{position:sticky;top:0;background:var(--card)}
+    .muted{color:var(--dim2);font-size:11.5px}
+    .warnbox{background:var(--amberbg);border:1px solid var(--amberline);border-radius:10px;padding:11px 13px;font-size:12px;color:#e8c48a;margin-top:10px}
+    .warnbox b{color:#ffdca0}
+    .bar{height:9px;background:#12202f;border-radius:5px;overflow:hidden;margin:7px 0 4px}
+    .bar>div{height:100%;background:linear-gradient(90deg,#16a06a,#58e08f);transition:width .5s}
+    .bar.low>div{background:linear-gradient(90deg,#c0504d,#e0a26a)}
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="card">
+    <h1>⬟ GetPC 2 — Ops Console</h1>
+    <p class="sec">Everything you need to run the programme. Reconnect any time and this page tells you
+      exactly where things stand and whether anything needs doing. Read-only until you connect;
+      every action is one transaction signed by your wallet.</p>
+    <div class="row">
+      <button id="connect" class="go">Connect owner wallet</button>
+      <button id="refresh" class="ghost">Refresh</button>
+      <span id="who" class="muted"></span>
+    </div>
+    <div id="log"></div>
+  </div>
+
+  <!-- ============ THE ANSWER: what do I need to do ============ -->
+  <div id="verdict" class="warn">
+    <h2 id="vtitle">Loading current status…</h2>
+    <div id="vsub" class="sec"></div>
+    <ul id="vlist"></ul>
+  </div>
+
+  <!-- ============ FUNDING ============ -->
+  <div class="card">
+    <h2>💰 Reward pool <span class="chain">Pentagon Chain</span></h2>
+    <p class="sec">The pool pays claims. Running low is <b>safe</b> — claims simply pause with a
+      "topping up" message and nothing is lost — but keep it ahead of demand.</p>
+    <div class="kpi">
+      <div><div class="l">Pool balance</div><div class="v" id="kPool">–</div></div>
+      <div><div class="l">Days of cover</div><div class="v" id="kCover">–</div></div>
+      <div><div class="l">Committed $PC</div><div class="v" id="kStaked">–</div></div>
+      <div><div class="l">Owed per year</div><div class="v" id="kLiab">–</div></div>
+    </div>
+    <div class="bar" id="coverBar"><div style="width:0%"></div></div>
+    <p class="sec" id="coverNote">–</p>
+
+    <h2 style="margin-top:16px;font-size:13.5px">Top up</h2>
+    <p class="sec">Send native <b>$PC on Pentagon Chain</b> to the ledger. <b>No owner key needed</b> —
+      <code>receive()</code> is public, so any wallet (or your treasury) can fund it.</p>
+    <p class="sec">Address: <code id="ledgerAddr">–</code>
+      <button id="copyAddr" class="ghost" style="padding:3px 9px;margin-left:6px">copy</button></p>
+    <div class="row">
+      <input id="fundAmt" placeholder="amount in $PC" />
+      <button id="bFund">Send from my wallet</button>
+      <span class="muted">plain transfer — works from any wallet</span>
+    </div>
+  </div>
+
+  <!-- ============ PAYOUT GUARDS ============ -->
+  <div class="card">
+    <h2>🛡️ Payout guards <span class="chain">Pentagon Chain</span></h2>
+    <p class="sec">A refilling bucket bounds how fast the programme can ever pay out, so a compromised
+      signer pair can't drain the pool. Sized for the programme's <i>current</i> size — step it up as
+      commitments grow.</p>
+    <table>
+      <tr><th>Guard</th><th>Now</th><th>What it means</th></tr>
+      <tr><td class="k">Refill rate</td><td id="gRate" class="cur">–</td><td class="muted">max sustained payout, forever</td></tr>
+      <tr><td class="k">Burst cap</td><td id="gCap">–</td><td class="muted">most that can leave in one moment</td></tr>
+      <tr><td class="k">Available now</td><td id="gAvail">–</td><td class="muted">currently banked in the bucket</td></tr>
+      <tr><td class="k">Daily ceiling</td><td id="gDay">–</td><td class="muted">coarse second bound</td></tr>
+      <tr><td class="k">Per-position cap</td><td id="gMirror">–</td><td class="muted">largest single mirrored stake</td></tr>
+    </table>
+    <div id="guardVerdict" class="warnbox" style="display:none"></div>
+    <h2 style="margin-top:15px;font-size:13.5px">Step up the guard</h2>
+    <p class="sec">Two rules: the refill rate must exceed the whole programme's daily accrual, and the
+      burst cap must never sit below the largest legitimate single claim (a 100 $PC position left
+      unclaimed for two years is <b>36 $PC</b>) or a patient staker gets stuck.</p>
+    <table>
+      <tr><th>When committed reaches</th><th>Set rate</th><th>Set cap</th><th></th></tr>
+      <tr><td class="k">up to 6,000 (now)</td><td>3 /day</td><td>60 $PC</td><td id="tier0">–</td></tr>
+      <tr><td class="k">6,000</td><td>8 /day</td><td>240 $PC</td><td><button class="ghost bTier" data-r="8" data-c="240">apply</button></td></tr>
+      <tr><td class="k">10,000 (tranche A full)</td><td>15 /day</td><td>450 $PC</td><td><button class="ghost bTier" data-r="15" data-c="450">apply</button></td></tr>
+      <tr><td class="k">25,000</td><td>37 /day</td><td>1,110 $PC</td><td><button class="ghost bTier" data-r="37" data-c="1110">apply</button></td></tr>
+      <tr><td class="k">50,000 (full)</td><td>74 /day</td><td>2,220 $PC</td><td><button class="ghost bTier" data-r="74" data-c="2220">apply</button></td></tr>
+    </table>
+    <div class="row">
+      <input id="cRate" placeholder="custom rate $PC/day" style="max-width:170px" />
+      <input id="cCap" placeholder="custom cap $PC" style="max-width:150px" />
+      <button id="bGuard" disabled>Set custom</button>
+    </div>
+  </div>
+
+  <!-- ============ RATES ============ -->
+  <div class="card">
+    <h2>📈 Current rates offered to new members</h2>
+    <p class="sec">Set by the active tranche, which follows how much is committed <i>right now</i>.
+      A member's rate is fixed when they commit and never changes afterwards.</p>
+    <table id="rateTbl"><tr><th>Term</th><th>Rate / yr</th></tr></table>
+    <p class="sec" id="rateNote">–</p>
+  </div>
+
+  <!-- ============ OWNERSHIP + CONFIG ============ -->
+  <div class="card">
+    <h2>⚙️ Configuration</h2>
+    <table id="cfgTbl">
+      <tr><th>Setting</th><th>Current</th><th>Expected</th></tr>
+    </table>
+    <div class="row" id="acceptRow" style="display:none">
+      <button id="vAccept" disabled>Accept vault ownership (Ethereum)</button>
+      <button id="lAccept" disabled>Accept ledger ownership (Pentagon)</button>
+    </div>
+    <div class="row">
+      <button id="vPause" class="danger" disabled>Pause new locks</button>
+      <button id="vUnpause" class="ghost" disabled>Resume locks</button>
+      <button id="lPause" class="danger" disabled>Pause claims</button>
+      <button id="lUnpause" class="ghost" disabled>Resume claims</button>
+    </div>
+    <p class="sec">Pausing never traps anyone's principal — withdrawing after the lock ends always works.</p>
+  </div>
+
+  <!-- ============ USER ACTIVITY ============ -->
+  <div class="card">
+    <h2>👥 Member activity</h2>
+    <p class="sec">Live from chain. Stakes and withdrawals come from Ethereum; claims and pool
+      top-ups from Pentagon Chain.</p>
+    <div class="row">
+      <button id="loadHist" class="ghost">Load activity</button>
+      <span class="muted" id="histNote">not loaded — reading logs takes a few seconds</span>
+    </div>
+    <div class="hist"><table id="histTbl"></table></div>
+  </div>
+
+  <div class="card">
+    <h2>📕 Reference</h2>
+    <table>
+      <tr><td class="k">Vault (principal)</td><td><code id="rVault">–</code> <span class="chain">Ethereum</span></td></tr>
+      <tr><td class="k">Ledger (rewards)</td><td><code id="rLedger">–</code> <span class="chain">Pentagon</span></td></tr>
+      <tr><td class="k">Full runbook</td><td>private repo <code>pc-stake / RUNBOOK.md</code></td></tr>
+      <tr><td class="k">Member support</td><td><a href="https://discord.gg/pentagongamesxp" target="_blank" rel="noopener">discord.gg/pentagongamesxp</a></td></tr>
+    </table>
+    <p class="sec">Owner actions here are the <b>only</b> way to change the programme. There are no
+      hidden admin paths — if something isn't on this page, nobody can do it.</p>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js" integrity="sha384-gpR0Q6Hx/O+uevlbpbANbS0LWjbejPV1sqD/8w422l/fW8whGY0EPmKw3uG7ACYP" crossorigin="anonymous"></script>
+<script src="ops.js"></script>
+</body>
+</html>

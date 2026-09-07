@@ -1,0 +1,2 @@
+User-agent: *
+Disallow: /getPC2/ops/
