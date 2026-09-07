@@ -565,10 +565,13 @@ async function refreshLocks() {
     const daysLeft = Math.max(0, Math.ceil((end - now) / 86400));
     const canWithdraw = !p.withdrawn && (now >= end || early);
     const stateTxt = p.withdrawn
-      ? 'principal withdrawn ✓'
+      ? `principal withdrawn ✓ · ${now >= end
+          ? 'rewards finished'
+          : `rewards accrue until ${new Date(end * 1000).toLocaleDateString()}`}`
       : now >= end ? '<b style="color:#9fe3bf">unlocked — you can withdraw your $PC</b>'
       : early ? `unlocks ${new Date(end * 1000).toLocaleDateString()} · <b style="color:#e0a26a">early unlock enabled (test)</b>`
-      : `unlocks ${new Date(end * 1000).toLocaleDateString()} (${daysLeft} day${daysLeft === 1 ? '' : 's'} left)`;
+      : `unlocks ${new Date(end * 1000).toLocaleDateString()} (${daysLeft} day${daysLeft === 1 ? '' : 's'} left)`
+        + ` <span style="color:#b39a55">· earning stops then</span>`;
     d.innerHTML =
       `<div class="r1"><span>Lock #${i} · <b>${fmtPC(p.amount)} $PC</b> @ ${rate}%</span><span>${Number(p.termDays)}d</span></div>` +
       `<div class="r2">${stateTxt}</div>` +
@@ -621,7 +624,9 @@ async function refreshLocks() {
           : `<span class="cb-label">Not yet claimable</span>`
             + `<span class="cb-amt">${fmtPoints(pend)}</span>`
             + `<span class="cb-unit">$PC</span>`
-            + `<div class="cb-sub">${p.withdrawn ? 'lock closed' : pend === 0n ? 'starting to accrue…' : `unlocks in ${fmtDur(Number(nca) - now)} · ${new Date(Number(nca) * 1000).toLocaleTimeString()}`}</div>`;
+            + `<div class="cb-sub">${p.withdrawn ? 'lock closed' : pend === 0n ? 'starting to accrue…'
+                : `${fmtDur(Number(nca) - now)} before your ${claimed === 0n ? 'first' : 'next'} claim`
+                  + ` · ${new Date(Number(nca) * 1000).toLocaleTimeString()}`}</div>`;
       }
       const btn = $('claim' + i);
       if (settled) btn.remove(); else {
