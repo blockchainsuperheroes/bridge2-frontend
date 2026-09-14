@@ -227,6 +227,34 @@ function quote() {
   const amt = parseFloat($('amount').value) || 0;
   const o = $('term').selectedOptions[0];
   const bps = o ? Number(o.dataset.bps || 0) : 0;
+
+  // --- pre-flight: refuse an amount the contract would reject, BEFORE any
+  //     wallet prompt. Approve would succeed and Lock would revert, which
+  //     costs a signature and gas and looks like a broken app.
+  const sub = $('submit'), warn = $('amtWarn');
+  const maxOk = maxStakeable();
+  let problem = null;
+  if (account && maxOk !== null && amt > 0) {
+    let wei; try { wei = ethers.parseUnits($('amount').value.trim(), 18); } catch { wei = null; }
+    if (wei === null) problem = 'That does not look like a number.';
+    else if (limits.room !== null && limits.room === 0n)
+      problem = `You have already committed the maximum of ${fmtPC(limits.cap)} $PC for this wallet.`;
+    else if (limits.room !== null && wei > limits.room)
+      problem = `Over your wallet limit — you can commit <b>${fmtPC(limits.room)} $PC</b> more `
+        + `(${fmtPC(limits.mine)} of ${fmtPC(limits.cap)} already committed).`;
+    else if (limits.balance !== null && wei > limits.balance)
+      problem = `More than your wallet holds — you have <b>${fmtPC(limits.balance)} $PC</b>.`;
+  }
+  if (warn) {
+    warn.style.display = problem ? 'block' : 'none';
+    if (problem) warn.innerHTML = `⚠️ ${problem} <a href="#" id="useMax">Use maximum</a>`;
+  }
+  if (sub) {
+    sub.disabled = !!problem || notDeployed();
+    sub.textContent = problem ? 'Amount too high' : 'Review & stake';
+  }
+  if (problem) { q.style.display = 'none'; return; }
+
   if (!amt || !bps) { q.style.display = 'none'; return; }
   const t = CFG.terms.find((x) => x.days === Number(o.value));
   const total = amt * bps / 10000 * (t.days / 365), weekly = amt * bps / 10000 * (7 / 365); // 7/365 matches the contract exactly
@@ -283,16 +311,33 @@ async function connect() {
   if (notDeployed()) { $('submit').disabled = true; status('Preview build — staking opens at launch.'); }
   await Promise.all([refreshBalances(), refreshTranche(), refreshTermRates(), refreshLocks()]);
 }
+/* Live on-chain limits, cached so the amount box can be validated on every
+   keystroke without an RPC round-trip. `room` is what this wallet may still
+   commit: the per-wallet cap minus what it already has committed. */
+let limits = { balance: null, cap: null, mine: null, room: null };
 async function refreshBalances() {
   if (!account) return;
-  try { $('balance').textContent = fmtPC(await pcTokenRead.balanceOf(account)) + ' $PC'; } catch {}
+  try {
+    limits.balance = await pcTokenRead.balanceOf(account);
+    $('balance').textContent = fmtPC(limits.balance) + ' $PC';
+  } catch {}
   if (vaultRead) {
     try {
       const [mine, cap] = await Promise.all([vaultRead.stakedByStaker(account), vaultRead.maxStakePerStaker()]);
+      limits.mine = mine; limits.cap = cap;
+      limits.room = cap > mine ? cap - mine : 0n;
       $('committed').textContent = `${fmtPC(mine)} / ${fmtPC(cap)} $PC`;
       $('maxCap').textContent = fmtPC(cap);
     } catch {}
   }
+  quote();   // re-validate against freshly read limits
+}
+/* The most this wallet can commit right now = min(what it holds, cap headroom). */
+function maxStakeable() {
+  if (limits.balance === null && limits.room === null) return null;
+  const b = limits.balance ?? 0n, r = limits.room;
+  if (r === null) return b;
+  return b < r ? b : r;
 }
 
 /* ---------------- guided, on-chain-verified stepper (bridge pattern) ---------------- */
@@ -407,6 +452,24 @@ async function startStake(e) {
     if (!amtStr || Number(amtStr) <= 0) return status('Enter an amount.', 'err');
     const amount = ethers.parseUnits(amtStr, 18);
     if (amount > await pcTokenRead.balanceOf(account)) return status('Amount exceeds your $PC balance.', 'err');
+    // The per-wallet cap is checked here too, read fresh from chain. Without it an
+    // over-cap amount passed the balance check, sailed through Approve, and only
+    // reverted at Lock — burning a signature and gas on a guaranteed failure.
+    if (vaultRead) {
+      try {
+        const [mine, cap] = await Promise.all([
+          vaultRead.stakedByStaker(account), vaultRead.maxStakePerStaker(),
+        ]);
+        const room = cap > mine ? cap - mine : 0n;
+        if (amount > room) {
+          quote();   // surface the inline warning as well
+          return status(room === 0n
+            ? `You have already committed the maximum of ${fmtPC(cap)} $PC for this wallet.`
+            : `Over your wallet limit — you can commit ${fmtPC(room)} $PC more (${fmtPC(mine)} of ${fmtPC(cap)} already committed).`,
+            'err');
+        }
+      } catch { /* if the read fails, fall through — the contract still enforces it */ }
+    }
     const termDays = Number($('term').value);
     const bps = Number($('term').selectedOptions[0].dataset.bps || 0);
 
@@ -799,15 +862,18 @@ window.addEventListener('DOMContentLoaded', async () => {
   $('form').addEventListener('submit', startStake);
   $('amount').addEventListener('input', () => { resetFlow(); quote(); });
   $('term').addEventListener('change', quote);
-  $('max').addEventListener('click', async () => {
+  const fillMax = async () => {
     if (!account) return;
-    let b = await pcToken.balanceOf(account);
-    let cap = ethers.parseUnits(CFG.maxPerWallet, 18), mine = 0n;
-    if (vault) { try { [mine, cap] = await Promise.all([vault.stakedByStaker(account), vault.maxStakePerStaker()]); } catch {} }
-    const room = cap > mine ? cap - mine : 0n;
-    if (b > room) b = room;
-    $('amount').value = ethers.formatUnits(b, 18);
+    await refreshBalances();                 // re-read, don't trust a stale cache
+    const m = maxStakeable();
+    if (m === null) return;
+    $('amount').value = ethers.formatUnits(m, 18);
     quote();
+  };
+  $('max').addEventListener('click', fillMax);
+  // the "Use maximum" shortcut inside the warning
+  document.addEventListener('click', (e) => {
+    if (e.target && e.target.id === 'useMax') { e.preventDefault(); fillMax(); }
   });
   $('clearHist').addEventListener('click', clearHist);
   $('flash').addEventListener('click', (e) => { if (e.target === $('flash')) closeFlash(); }); // click backdrop to dismiss
