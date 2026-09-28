@@ -5,27 +5,27 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>GetPC 2 · Pentagon Chain</title>
   <style>
-    :root{--bg:#0a0f1c;--card:#101828;--line:#1f2b47;--line2:#2b3a5e;--txt:#cdd8ee;--head:#e6ebf5;--dim:#8b9cc0;--dim2:#7f8fb0;--green:#16a06a;--green2:#58e08f;--mint:#9fe3bf;--blue:#2a6cf6}
+    :root{--bg:#050807;--card:#0c120e;--line:#1e2b22;--line2:#1e2b22;--txt:#e8f5ec;--head:#e8f5ec;--dim:#7e9486;--dim2:#7e9486;--green:#00ff66;--green2:#4dff94;--mint:#4dff94;--blue:#00ff66}
     *{box-sizing:border-box;margin:0;padding:0}
     body{background:var(--bg);color:var(--txt);font:14px/1.6 -apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif}
-    a{color:#8fb0ff}
+    a{color:#4dff94}
     .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px}
     /* ---------- gate ---------- */
-    #gate{display:none;position:fixed;inset:0;background:rgba(4,7,14,.92);z-index:50;align-items:center;justify-content:center;padding:16px;overflow:auto}
+    #gate{display:none;position:fixed;inset:0;background:rgba(5,8,7,.93);z-index:50;align-items:center;justify-content:center;padding:16px;overflow:auto}
     .gate-card{max-width:640px;margin:auto}
     .gate-card h1{color:var(--head);font-size:20px;margin-bottom:8px}
     .gate-card p{font-size:13px;color:var(--dim)}
-    .banner{background:#221a10;border:1px solid #6a521f;border-radius:11px;padding:10px 13px;font-size:12px;color:#e8c48a;margin-top:12px}
-    .banner b{color:#ffdca0}
-    .tosbox{max-height:200px;overflow-y:auto;border:1px solid var(--line2);border-radius:10px;padding:4px 14px;margin:14px 0 6px;background:#0b1120}
+    .banner{background:#181206;border:1px solid #4a3a14;border-radius:11px;padding:10px 13px;font-size:12px;color:#ffd98a;margin-top:12px}
+    .banner b{color:#ffc24d}
+    .tosbox{max-height:200px;overflow-y:auto;border:1px solid var(--line2);border-radius:10px;padding:4px 14px;margin:14px 0 6px;background:#050807}
     .tosbox::-webkit-scrollbar{width:9px}
-    .tosbox::-webkit-scrollbar-thumb{background:#33456e;border-radius:5px}
+    .tosbox::-webkit-scrollbar-thumb{background:#2c4033;border-radius:5px}
     .tosbox h3{color:var(--mint);font-size:12.5px;margin:12px 0 4px}
-    .tosbox p,.tosbox li{font-size:11.5px;color:#9fb0d0;margin:8px 0;line-height:1.55}
+    .tosbox p,.tosbox li{font-size:11.5px;color:#7e9486;margin:8px 0;line-height:1.55}
     .tosbox b{color:var(--txt)}
-    .tosbox .no{color:#ff9db0}
+    .tosbox .no{color:#ff7a90}
     .tosend{font-size:12px;color:var(--green2);margin:10px 0 2px;font-weight:600}
-    .scrollhint{font-size:11.5px;color:#e0a26a;margin:2px 0 12px;transition:color .3s}
+    .scrollhint{font-size:11.5px;color:#ffc24d;margin:2px 0 12px;transition:color .3s}
     .scrollhint.done{color:var(--green2)}
     .chk{display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--dim);margin:8px 0 12px;cursor:pointer}
     .cta{display:block;width:100%;padding:13px;border:0;border-radius:10px;background:var(--green);color:#fff;font-weight:700;font-size:15px;cursor:pointer}
@@ -37,61 +37,61 @@
     .tag{font-size:11.5px;color:var(--dim2)}
     .appcard{margin-bottom:16px}
     .tvl{text-align:center;padding:14px 12px 12px;margin-bottom:12px;border-radius:12px;
-      background:radial-gradient(120% 100% at 50% 0%,#12202f 0%,#0c1322 70%);border:1px solid #2b3a5e}
-    .tvl-n{font-size:clamp(26px,7vw,34px);font-weight:800;color:#9fe3bf;line-height:1.1;letter-spacing:-.5px}
-    .tvl-l{font-size:11.5px;color:#8b9cc0;margin-top:4px}
+      background:radial-gradient(120% 100% at 50% 0%,#131b16 0%,#0c120e 70%);border:1px solid #1e2b22}
+    .tvl-n{font-size:clamp(26px,7vw,34px);font-weight:800;color:#4dff94;line-height:1.1;letter-spacing:-.5px}
+    .tvl-l{font-size:11.5px;color:#7e9486;margin-top:4px}
     .tvl-l span{color:#b39a55}
-    .tranche{background:#0d1a12;border:1px solid #1f5a3a;border-radius:11px;padding:12px 14px;margin-bottom:16px}
+    .tranche{background:#0f1b13;border:1px solid #2c4033;border-radius:11px;padding:12px 14px;margin-bottom:16px}
     .tranche .r1{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px;font-size:12.5px}
     .tranche b{color:var(--green2)}
     .tranche .rem{color:var(--mint);font-size:12px}
-    .bar{height:8px;background:#12202f;border-radius:5px;overflow:hidden;margin:8px 0 6px}
-    .bar>div{height:100%;width:0%;background:linear-gradient(90deg,#16a06a,#58e08f);transition:width .6s}
+    .bar{height:8px;background:#131b16;border-radius:5px;overflow:hidden;margin:8px 0 6px}
+    .bar>div{height:100%;width:0%;background:linear-gradient(90deg,#00ff66,#4dff94);transition:width .6s}
     .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
-    .chip{font-size:11.5px;background:#0d1426;border:1px solid var(--line2);border-radius:99px;padding:3px 10px;color:var(--dim)}
+    .chip{font-size:11.5px;background:#131b16;border:1px solid var(--line2);border-radius:99px;padding:3px 10px;color:var(--dim)}
     .chip b{color:var(--mint)}
     .fld{display:block;font-size:11.5px;color:var(--dim2);margin:14px 0 5px}
-    input,select{width:100%;background:#0b1120;border:1px solid var(--line2);border-radius:9px;color:var(--head);padding:11px 12px;font-size:14px}
+    input,select{width:100%;background:#050807;border:1px solid var(--line2);border-radius:9px;color:var(--head);padding:11px 12px;font-size:14px}
     .row{display:flex;gap:8px}.row input{flex:1}
-    .row button{background:#16233f;border:1px solid var(--line2);color:#9fb0d0;border-radius:9px;padding:0 14px;cursor:pointer}
+    .row button{background:#0f1b13;border:1px solid var(--line2);color:#7e9486;border-radius:9px;padding:0 14px;cursor:pointer}
     .bal{font-size:11.5px;color:var(--dim2);margin-top:6px}
-    .quote{background:#0d1a12;border:1px solid #1f5a3a;border-radius:10px;padding:11px 13px;margin-top:12px;font-size:13px;color:var(--mint);display:none}
-    .quote b{color:#c9ffe4}
+    .quote{background:#0f1b13;border:1px solid #2c4033;border-radius:10px;padding:11px 13px;margin-top:12px;font-size:13px;color:var(--mint);display:none}
+    .quote b{color:#e8f5ec}
     #submit{margin-top:14px}
     /* stepper (same pattern as the bridge) */
-    .steps{display:none;margin-top:12px;background:#0d1426;border:1px solid var(--line2);border-radius:10px;padding:10px 12px}
+    .steps{display:none;margin-top:12px;background:#131b16;border:1px solid var(--line2);border-radius:10px;padding:10px 12px}
     .steps .hdr{font-size:12px;color:#cfe;margin-bottom:8px}
     .step{display:flex;align-items:center;gap:9px;font-size:12.5px;padding:4px 0;color:var(--dim)}
-    .step .dot{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:#24314f;color:#9fb0d0;flex:none}
+    .step .dot{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:#1e2b22;color:#7e9486;flex:none}
     .step.active{color:var(--head)}.step.active .dot{background:var(--blue);color:#fff}
     .step.done{color:var(--mint)}.step.done .dot{background:var(--green);color:#fff}
-    .step.fail{color:#ff9db0}.step.fail .dot{background:#c0504d;color:#fff}
+    .step.fail{color:#ff7a90}.step.fail .dot{background:#ff3b5c;color:#fff}
     .step .sub{font-size:11px;color:var(--dim2);display:block;margin-top:2px}
     .stepAct{margin-top:12px}
     .stepAct .go{width:100%;padding:11px;border:0;border-radius:9px;background:var(--blue);color:#fff;font-weight:700;font-size:14px;cursor:pointer}
     .stepAct .go:disabled{opacity:.55;cursor:default}
-    .stepAct .go.retry{background:#c0504d}
+    .stepAct .go.retry{background:#ff3b5c}
     .stepAct .hint{font-size:11.5px;color:var(--dim);margin-top:8px;text-align:center;line-height:1.5}
     .spin{display:inline-block;width:12px;height:12px;border:2px solid #cfe;border-top-color:transparent;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:6px}
     @keyframes sp{to{transform:rotate(360deg)}}
     /* capacity / risk-control hold — calm amber, never alarming red */
-    .rs.hold{color:#e8c48a}
-    .hold{display:block;background:#221a10;border:1px solid #6a521f;border-radius:9px;padding:9px 11px;font-size:12px;line-height:1.55}
-    .hold b{color:#ffdca0}
+    .rs.hold{color:#ffd98a}
+    .hold{display:block;background:#181206;border:1px solid #4a3a14;border-radius:9px;padding:9px 11px;font-size:12px;line-height:1.55}
+    .hold b{color:#ffc24d}
     .hold a{color:#ffd76a;text-decoration:underline}
     .hold-sub{display:block;margin-top:5px;color:#c9a86a;font-size:11.5px}
     #status{margin-top:12px;font-size:13px;min-height:18px;color:var(--dim)}
-    #status.err{color:#ff8f8f}#status.ok{color:var(--green2)}
+    #status.err{color:#ff7a90}#status.ok{color:var(--green2)}
     #result{margin-top:10px;font-size:13px;line-height:1.55;color:var(--txt)}
-    .tstep{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:8px;background:#0d1426;font-size:12px;color:var(--dim)}
-    .tstep.done{border-color:#1f5a3a;background:#0d1a12;color:var(--mint)}
+    .tstep{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:8px;background:#131b16;font-size:12px;color:var(--dim)}
+    .tstep.done{border-color:#2c4033;background:#0f1b13;color:var(--mint)}
     /* locks — gold card so your positions stand out */
-    #locksCard{background:linear-gradient(160deg,#1a1508 0%,#141005 100%);border:1px solid #8a6d1f;box-shadow:0 0 22px rgba(212,166,47,.10)}
+    #locksCard{background:linear-gradient(160deg,#181206 0%,#181206 100%);border:1px solid #8a6d1f;box-shadow:0 0 22px rgba(212,166,47,.10)}
     #locksCard h4{color:#ffd76a;font-size:15px}
     #locksCard h4::before{content:"🏆 "}
     #locksCard .tag{color:#b39a55}
     #locksCard .tag a{color:#e8c060}
-    .lock{border:1px solid #6a521f;border-radius:10px;padding:12px;margin-top:10px;background:#201808;font-size:12.5px}
+    .lock{border:1px solid #4a3a14;border-radius:10px;padding:12px;margin-top:10px;background:#201808;font-size:12.5px}
     .lock .r1{display:flex;justify-content:space-between;color:#ffe9b3;font-size:14px}
     .lock .r1 b{color:#ffd76a}
     .lock .r2{color:#c9b784;margin-top:3px}
@@ -103,29 +103,29 @@
     .claimbox.waiting .cb-label{color:#b39a55}
     .cb-amt{display:block;font-size:26px;font-weight:800;color:#7df0a5;line-height:1.25;margin-top:2px;word-break:break-all}
     .claimbox.waiting .cb-amt{color:#c9b784}
-    .cb-unit{font-size:12.5px;font-weight:700;color:#9fe3bf}
+    .cb-unit{font-size:12.5px;font-weight:700;color:#4dff94}
     .claimbox.waiting .cb-unit{color:#b39a55}
-    .cb-sub{font-size:11px;color:#8b9cc0;margin-top:3px}
+    .cb-sub{font-size:11px;color:#7e9486;margin-top:3px}
     .rdsub{margin-top:7px;font-size:11.5px;color:#b39a55;text-align:center}
     .rdsub b{color:#ffd76a}
     .lock .rs{margin-top:6px;font-size:12px;color:var(--dim);min-height:15px}
-    .lock .rs.ok{color:var(--green2)}.lock .rs.err{color:#ff8f8f}
+    .lock .rs.ok{color:var(--green2)}.lock .rs.err{color:#ff7a90}
     .lock .r3{margin-top:8px;display:flex;gap:8px;flex-wrap:wrap}
     .lock button{padding:7px 12px;border:0;border-radius:8px;background:var(--blue);color:#fff;font-size:12px;font-weight:600;cursor:pointer}
     .lock button:disabled{opacity:.5;cursor:not-allowed}
     .lock button.w{background:var(--green)}
     .hempty{font-size:12.5px;color:var(--dim2);text-align:center;padding:14px 0}
     /* history */
-    .hnote{font-size:11.5px;color:#e8c48a;background:#221a10;border:1px solid #6a521f;border-radius:9px;padding:9px 12px;line-height:1.5;margin-bottom:10px}
+    .hnote{font-size:11.5px;color:#ffd98a;background:#181206;border:1px solid #4a3a14;border-radius:9px;padding:9px 12px;line-height:1.5;margin-bottom:10px}
     .hitem{border-bottom:1px dashed var(--line);padding:7px 2px;font-size:12px;color:var(--dim)}
     .hitem b{color:var(--txt)}
     .hclear{margin-top:8px;font-size:11.5px;color:var(--dim);background:none;border:0;text-decoration:underline;cursor:pointer}
-    .appfine{font-size:11px;color:#6b7ba0;margin-top:14px;line-height:1.5}
+    .appfine{font-size:11px;color:#7e9486;margin-top:14px;line-height:1.5}
     h4{color:var(--head);font-size:14px;margin-bottom:2px}
     /* claim success flash */
-    #flash{display:none;position:fixed;inset:0;background:rgba(4,7,14,.88);z-index:60;align-items:center;justify-content:center;padding:16px}
+    #flash{display:none;position:fixed;inset:0;background:rgba(5,8,7,.90);z-index:60;align-items:center;justify-content:center;padding:16px}
     .flash-card{max-width:420px;width:100%;text-align:center;padding:30px 24px;border-radius:16px;
-      background:linear-gradient(160deg,#1a1508 0%,#141005 100%);border:1px solid #8a6d1f;box-shadow:0 0 40px rgba(212,166,47,.22);
+      background:linear-gradient(160deg,#181206 0%,#181206 100%);border:1px solid #8a6d1f;box-shadow:0 0 40px rgba(212,166,47,.22);
       animation:pop .35s cubic-bezier(.2,1.3,.4,1)}
     @keyframes pop{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
     .flash-emoji{font-size:46px;line-height:1;animation:bounce .7s ease 1}
@@ -139,18 +139,18 @@
     .flash-links a{color:#e8c060}
     #flashClose{margin-top:12px;background:#8a6d1f}
     /* redeem (farewell) variant — cool blue instead of celebratory gold */
-    .flash-card.redeem{background:linear-gradient(160deg,#0e1b2b 0%,#0a1420 100%);border-color:#37628f;box-shadow:0 0 40px rgba(58,124,180,.20)}
-    .flash-card.redeem h2{color:#8fc9ff}
-    .flash-card.redeem .flash-sub{color:#9fb6cf}
-    .flash-card.redeem .flash-amt{color:#dff0ff;text-shadow:0 0 18px rgba(120,190,255,.30)}
-    .flash-card.redeem .flash-unit{color:#8fc9ff}
-    .flash-card.redeem .flash-note{color:#7f9ab5}
-    .flash-card.redeem .flash-links a{color:#8fb0ff}
-    .flash-card.redeem .thanks{margin-top:12px;padding:11px 12px;border-radius:10px;background:#0d1a12;border:1px solid #1f5a3a;font-size:12.5px;color:var(--mint);line-height:1.55}
-    .flash-card.redeem .thanks b{color:#c9ffe4}
+    .flash-card.redeem{background:linear-gradient(160deg,#131b16 0%,#0c120e 100%);border-color:#2c4033;box-shadow:0 0 40px rgba(0,255,102,.20)}
+    .flash-card.redeem h2{color:#4dff94}
+    .flash-card.redeem .flash-sub{color:#7e9486}
+    .flash-card.redeem .flash-amt{color:#e8f5ec;text-shadow:0 0 18px rgba(0,255,102,.30)}
+    .flash-card.redeem .flash-unit{color:#4dff94}
+    .flash-card.redeem .flash-note{color:#7e9486}
+    .flash-card.redeem .flash-links a{color:#4dff94}
+    .flash-card.redeem .thanks{margin-top:12px;padding:11px 12px;border-radius:10px;background:#0f1b13;border:1px solid #2c4033;font-size:12.5px;color:var(--mint);line-height:1.55}
+    .flash-card.redeem .thanks b{color:#e8f5ec}
     .flash-btns{display:flex;gap:8px;margin-top:14px}
     .flash-btns .cta{flex:1;font-size:14px;padding:12px}
-    .flash-btns .ghost{background:transparent;border:1px solid #37628f;color:#9fb6cf}
+    .flash-btns .ghost{background:transparent;border:1px solid #2c4033;color:#7e9486}
     /* completed locks — collapsed by default */
     #doneWrap{margin-top:14px;border:1px dashed #4a4326;border-radius:10px;background:#161206;padding:0 12px}
     #doneWrap summary{cursor:pointer;list-style:none;padding:10px 0;font-size:12.5px;color:#b39a55;font-weight:600;user-select:none}
@@ -160,11 +160,22 @@
     #doneWrap .lock{opacity:.72}
     #doneWrap .lock:last-child{margin-bottom:12px}
       /* amount over the wallet cap / balance — caught before any wallet prompt */
-    .amtwarn{margin-top:7px;padding:8px 11px;border-radius:9px;background:#2a1512;border:1px solid #7a2f2f;
-      font-size:11.5px;color:#ffb0b0;line-height:1.5}
-    .amtwarn b{color:#ffd0d0}
-    .amtwarn a{color:#ff9db0;text-decoration:underline;margin-left:4px;white-space:nowrap}
+    .amtwarn{margin-top:7px;padding:8px 11px;border-radius:9px;background:#1b0c10;border:1px solid #3a1620;
+      font-size:11.5px;color:#ff7a90;line-height:1.5}
+    .amtwarn b{color:#ffc2ce}
+    .amtwarn a{color:#ff7a90;text-decoration:underline;margin-left:4px;white-space:nowrap}
+  
+    /* Pentagon mark — same clip-path the main site uses for its logo glyph. */
+    .pgmark{display:inline-block;width:15px;height:15px;background:#00ff66;margin-right:7px;vertical-align:-1px;
+      clip-path:polygon(50% 0%,100% 38%,82% 100%,18% 100%,0% 38%)}
+    /* ---- pentagon.games (home2) display type ---- */
+    h1,h2,h3,.tag,label,button,.badge,.chip{font-family:'Chakra Petch',system-ui,sans-serif;letter-spacing:.02em}
+    body{background:#050807;color:#e8f5ec}
+    a{color:#4dff94}
+    input,code,.mono{font-family:ui-monospace,'Cascadia Mono','Roboto Mono',monospace}
   </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&display=swap">
 </head>
 <body>
 
@@ -220,14 +231,14 @@
   <!-- ============ APP ============ -->
   <div id="app">
     <div class="head">
-      <h2>GetPC 2</h2>
+      <h2><span class="pgmark" aria-hidden="true"></span>GetPC 2</h2>
       <span class="tag"><a href="welcome.html">welcome</a> · <a href="details.html">program guide</a> · <a href="claims.html">claiming guide</a> · <a href="#" id="showterms">terms</a> · <a href="https://github.com/blockchainsuperheroes/pc-stake-frontend" target="_blank" rel="noopener">source ↗</a></span>
     </div>
 
     <div class="appcard card" id="locksCard" style="display:none">
       <h4>My locks</h4>
       <p class="tag">Each stake is its own lock — read live from the blockchain. <b style="color:#ffd76a">Get $PC every week</b> — claim once a week per lock, entirely on Pentagon Chain (<a href="claims.html">how claiming works →</a>).</p>
-      <p class="tag" style="margin-top:6px"><b style="color:#e8c48a">When a lock ends:</b> earning stops on that date, your $PC becomes withdrawable on Ethereum, and anything already earned stays claimable — nothing expires. To keep earning, start a new lock at whatever rate is live then. <a href="details.html#lifecycle">what happens at the end →</a></p>
+      <p class="tag" style="margin-top:6px"><b style="color:#ffd98a">When a lock ends:</b> earning stops on that date, your $PC becomes withdrawable on Ethereum, and anything already earned stays claimable — nothing expires. To keep earning, start a new lock at whatever rate is live then. <a href="details.html#lifecycle">what happens at the end →</a></p>
       <div id="lockList"><div class="hempty">Connect your wallet to see your locks.</div></div>
       <details id="doneWrap" style="display:none">
         <summary><span id="doneCount">0</span> completed lock(s) — principal redeemed</summary>
@@ -245,7 +256,7 @@
         <div class="r1"><b id="trTitle">🏆 Founder rates</b><span class="rem" id="trRemain">—</span></div>
         <div class="bar"><div id="trBar"></div></div>
         <div class="chips" id="rateChips"></div>
-        <div id="trNext" style="margin-top:9px;padding-top:8px;border-top:1px dashed #1f5a3a;font-size:11px;color:#7f8fb0;line-height:1.6"></div>
+        <div id="trNext" style="margin-top:9px;padding-top:8px;border-top:1px dashed #2c4033;font-size:11px;color:#7e9486;line-height:1.6"></div>
       </div>
 
       <button id="connect" class="cta">Connect Wallet</button>
