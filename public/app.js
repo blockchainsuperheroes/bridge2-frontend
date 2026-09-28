@@ -21,6 +21,63 @@ const ROUTER = [
 ];
 
 const $ = (id) => document.getElementById(id);
+
+/* ---------------- popup mode (the pentagon.games pill) ----------------
+   nftprof, 2026-09-28: the pill's "Bridge to Pentagon Chain" navigated the
+   visitor off the page they were on. The pill now opens this app in a popup
+   window, the way it opens Top up, with ?mode=popup and the $PC it can see
+   on Ethereum as ?amount=.
+
+   Opt-in only: without ?mode=popup nothing here changes. And nothing is
+   skipped — the terms gate, the review, every wallet prompt and the
+   over-cap block all run exactly as on the full page. ?amount= only fills
+   the box; the visitor still reads, edits and confirms it.
+
+   Back to the page that opened us goes a bare status signal (no amount, no
+   address), so the pill can re-read balances; the popup closes itself only
+   when the visitor presses Done. */
+const QS = new URLSearchParams(location.search);
+const POPUP = QS.get('mode') === 'popup';
+/* Popup mode only: the full page never fills an amount in from its link — a
+   crafted link must not be able to pre-type a figure on a money page. */
+const PREFILL = !POPUP ? '' : (() => { const a = (QS.get('amount') || '').trim(); return /^\d{1,12}(\.\d{1,18})?$/.test(a) && Number(a) > 0 ? a : ''; })();
+/* The popup styles live here, not in index.html, so a restyle of the page
+   and this feature never touch the same lines. Same app, tighter, to fit a
+   ~480px window. */
+if (POPUP) {
+  document.documentElement.classList.add('popup');
+  const css = document.createElement('style');
+  css.textContent = '.popup #app{margin:8px auto;padding:10px}.popup .gate-card{padding:16px}'
+    /* Done matches the page's own primary action (.stepAct .go), on the same
+       --pg-* tokens the retheme moved this app onto. */
+    + '#popupDone{display:block;width:100%;margin:12px 0 0;padding:11px;border:0;border-radius:var(--pg-radius-small);'
+    + 'background:var(--pg-accent);color:var(--pg-on-accent);font-family:var(--pg-font-display);font-weight:600;font-size:14px;cursor:pointer;box-shadow:var(--pg-glow)}';
+  document.head.appendChild(css);
+}
+/* Which wallet. The pill passes ?wallet=<EIP-6963 rdns> so this popup uses the
+   SAME wallet the visitor chose there. window.ethereum belongs to whichever
+   extension claimed it last: with Rabby and another wallet installed, the
+   bridge could otherwise connect a different wallet than the one the pill
+   showed. Unknown or absent rdns: window.ethereum, as before. */
+const WANT_RDNS = (() => { const r = (QS.get('wallet') || '').trim(); return /^[a-z0-9][a-z0-9.-]{2,100}$/i.test(r) ? r : ''; })();
+const announced = [];
+window.addEventListener('eip6963:announceProvider', (e) => { const d = e.detail; if (d && d.provider && d.info) announced.push(d); });
+window.dispatchEvent(new Event('eip6963:requestProvider'));
+function walletProvider() {
+  if (WANT_RDNS) { const hit = announced.filter((d) => d.info.rdns === WANT_RDNS).pop(); if (hit) return hit.provider; }
+  return window.ethereum || null;
+}
+function tellOpener(status) {
+  if (!POPUP) return;
+  try { if (window.opener) window.opener.postMessage({ type: 'pg:bridge', status }, '*'); } catch {}
+}
+function showDone() {
+  if (!POPUP || $('popupDone')) return;
+  const b = document.createElement('button');
+  b.type = 'button'; b.id = 'popupDone'; b.textContent = 'Done — back to Pentagon';
+  b.onclick = () => window.close();
+  ($('app') || document.body).appendChild(b);   // always visible, whatever the form is showing
+}
 const status = (m, k = '') => { const e = $('status'); e.textContent = m; e.className = k; };
 
 let provider, signer, account, payWith = 'PC';
@@ -53,7 +110,18 @@ function showGate(force) {
   const h = $('scrollhint'); if (h) { h.textContent = '▼ Scroll through the terms above to enable the button.'; h.classList.remove('done'); }
   setTimeout(checkTosScroll, 60); // in case the content is short enough not to scroll
 }
-function enterApp() { $('gate').style.display = 'none'; $('app').style.display = 'block'; }
+function enterApp() {
+  $('gate').style.display = 'none'; $('app').style.display = 'block';
+  /* Popup mode: the visitor already chose to bridge, in the pill — don't make
+     them press Connect Wallet again. Runs only AFTER the terms gate (never
+     around it). A wallet that already approved this site answers silently;
+     first time, the wallet shows its own "connect to bridge.pentagon.games"
+     approval — that one is the wallet's, per site, and cannot be skipped. */
+  if (POPUP && !account && !window._autoTried) {
+    window._autoTried = true;
+    setTimeout(() => { connect().catch(() => {}); }, 150);
+  }
+}
 function agree() {
   if ($('agree').disabled) return;
   if ($('dontshow').checked) localStorage.setItem(AGREED_KEY, '1');
@@ -181,12 +249,18 @@ async function resumePending() {
 
 /* ---------------- wallet ---------------- */
 async function connect() {
-  if (!window.ethereum) return status('No wallet found. Install MetaMask.', 'err');
-  provider = new ethers.BrowserProvider(window.ethereum);
+  const eth = walletProvider();
+  if (!eth) return status('No wallet found. Install MetaMask.', 'err');
+  provider = new ethers.BrowserProvider(eth);
+  if (!window._ethBound && eth.on) {                // follow THIS wallet's changes
+    window._ethBound = true;
+    eth.on('accountsChanged', () => location.reload());
+    eth.on('chainChanged', () => location.reload());
+  }
   await provider.send('eth_requestAccounts', []);
   const net = await provider.getNetwork();
   if ('0x' + net.chainId.toString(16) !== CFG.ethChainIdHex) {
-    try { await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CFG.ethChainIdHex }] }); provider = new ethers.BrowserProvider(window.ethereum); }
+    try { await eth.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CFG.ethChainIdHex }] }); provider = new ethers.BrowserProvider(eth); }
     catch { return status(`Switch your wallet to ${CFG.ethChainName}.`, 'err'); }
   }
   signer = await provider.getSigner();
@@ -199,6 +273,12 @@ async function connect() {
   if (!$('recipient').value) $('recipient').value = account;
   renderResume();
   await refreshBalance();
+  /* Pre-fill from the pill, once, into an empty box — never over a resumable
+     top-up, which has its own amount. The visitor reviews it like any other. */
+  if (PREFILL && !$('amount').value && !pendingResumable(loadPending())) {
+    $('amount').value = PREFILL;
+    try { await refreshQuote(); checkCapacity(); } catch {}
+  }
   await refreshPool();
   if (!window._poolTimer) window._poolTimer = setInterval(refreshPool, 30000);
 }
@@ -544,6 +624,7 @@ async function finalize() {
     + `<div class="tstep-s" id="tPcS">Starts automatically once ${CFG.ethChainName} confirmations complete.</div></div>`
     + `</div>`;
   status('Locked in. Tracking the release below — safe to leave this open.', 'ok');
+  tellOpener('locked');
   $('submit').style.display = ''; $('submit').disabled = false;
   startTracker(ctx);
   await refreshBalance(); await refreshPool();
@@ -604,6 +685,7 @@ function startTracker(ctx) {
             const amt = j.amount ? fmtPC(BigInt(j.amount)) : fmtPC(ctx.pcToDeposit);
             const s = $('tPcS'); if (s) s.innerHTML = `<span style="color:#58e08f">✅ Credited ${amt} $PC on ${CFG.pcChainName}.</span>${link}`;
             status('Credited on Pentagon Chain. 🎉', 'ok');
+            tellOpener('credited'); showDone();
             await refreshBalance();
           } else if (pcFails >= 5) {
             pcDone = true; stop(); // endpoint unreachable — degrade to the explorer link
@@ -661,8 +743,6 @@ window.addEventListener('DOMContentLoaded', () => {
     await refreshQuote(); checkCapacity();
   });
 
-  if (window.ethereum) {
-    window.ethereum.on?.('accountsChanged', () => location.reload());
-    window.ethereum.on?.('chainChanged', () => location.reload());
-  }
+  /* Listeners for the wallet are bound in connect(), to the wallet actually
+     in use (see walletProvider). Before a connect there is nothing to follow. */
 });
