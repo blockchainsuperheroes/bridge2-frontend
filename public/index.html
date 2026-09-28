@@ -75,6 +75,13 @@
     #status{margin-top:12px;font-size:13px;min-height:18px;color:#9fb0d0}
     #status.err{color:#ff8f8f}#status.ok{color:#58e08f}
     #result{margin-top:10px;font-size:13px;line-height:1.55;color:#cdd8ee}
+    /* One-way is the single fact users most often get wrong about a bridge, and
+       it is irreversible. Stated plainly at the point of decision, not only in
+       the terms gate and the footer. */
+    .oneway{margin:14px 0 4px;padding:11px 13px;border-radius:10px;background:#221a10;border:1px solid #6a521f}
+    .ow-h{display:block;font-size:12.5px;font-weight:700;color:#ffdca0;letter-spacing:.2px}
+    .ow-b{display:block;font-size:11.5px;color:#e8c48a;line-height:1.55;margin-top:4px}
+    .ow-b b{color:#ffdca0}
     .appfine{font-size:11px;color:#6b7ba0;margin-top:14px;line-height:1.5}
     #form{display:none}
     code{color:#cfe}
@@ -119,14 +126,6 @@
     .hpending{border:1px solid #3a5a8f;background:#1a2233;border-radius:10px;padding:10px 12px;margin-bottom:9px;font-size:12.5px;color:#cdd8ee;line-height:1.5}
     .hpending b{color:#e6ebf5}
     .hpending button{margin-top:8px;padding:6px 11px;border:0;border-radius:8px;background:#2a6cf6;color:#fff;font-weight:600;font-size:12px;cursor:pointer}
-  
-    .getpc-cta{display:block;text-decoration:none;margin:0 0 16px;padding:14px 16px;border-radius:12px;
-      background:linear-gradient(160deg,#0d1a12 0%,#0b1420 100%);border:1px solid #1f5a3a;transition:border-color .2s}
-    .getpc-cta:hover{border-color:#58e08f}
-    .getpc-cta .g-l{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#7fbf8f}
-    .getpc-cta .g-t{display:block;font-size:16px;font-weight:800;color:#9fe3bf;margin-top:3px}
-    .getpc-cta .g-s{display:block;font-size:12px;color:#8b9cc0;margin-top:4px;line-height:1.5}
-    .getpc-cta .g-s b{color:#c9ffe4}
   </style>
 </head>
 <body>
@@ -174,12 +173,6 @@
 
   <!-- ============ APP ============ -->
   <div id="app">
-  <a class="getpc-cta" href="/getPC2/">
-    <span class="g-l">Already hold $PC on Ethereum?</span>
-    <span class="g-t">⬟ Got $PC? Put it to work &rarr;</span>
-    <span class="g-s">Lock it on Ethereum — it never bridges, you keep it — and claim $PC on Pentagon Chain every week. <b>GetPC 2</b></span>
-  </a>
-
     <div class="head">
       <h2>Top up $PC</h2>
       <span class="tag">one-way · <a href="#" id="showterms">terms</a></span>
@@ -220,6 +213,11 @@
 
         <label class="fld" for="recipient">Your Pentagon Chain address (credited)</label>
         <input id="recipient" type="text" placeholder="0x…" autocomplete="off" />
+
+        <div class="oneway" id="onewayNote">
+          <span class="ow-h">↓ One-way only — into Pentagon Chain</span>
+          <span class="ow-b">The $PC you send is <b>locked on Ethereum permanently</b>. You receive in-ecosystem $PC on Pentagon Chain, which <b>cannot be sent back out</b> and has no cash value. There is no return trip — please be sure before you continue.</span>
+        </div>
 
         <button id="submit" class="cta" type="submit">Review &amp; top up</button>
 
