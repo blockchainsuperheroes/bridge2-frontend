@@ -1,4 +1,7 @@
-/* Pentagon Chain $PC top-up — one-way bridge with optional swap-and-bridge (Uniswap v2). */
+/* Pentagon Chain one-way $PC bridge ("Bridge-In") with optional swap-and-bridge (Uniswap v2).
+   NOTE: the pc_topup_* localStorage keys and the tabTopup id predate the rename
+   to Bridge-In and are deliberately unchanged — renaming the keys would wipe
+   every existing visitor's local history. */
 const CFG = window.BRIDGE2_CONFIG;
 const AGREED_KEY = 'pc_topup_agreed_v1';
 const HISTORY_KEY = 'pc_topup_history_v1';
@@ -25,7 +28,7 @@ const $ = (id) => document.getElementById(id);
 /* ---------------- popup mode (the pentagon.games pill) ----------------
    nftprof, 2026-09-28: the pill's "Bridge to Pentagon Chain" navigated the
    visitor off the page they were on. The pill now opens this app in a popup
-   window, the way it opens Top up, with ?mode=popup and the $PC it can see
+   window, the way it opens Bridge-In, with ?mode=popup and the $PC it can see
    on Ethereum as ?amount=.
 
    Opt-in only: without ?mode=popup nothing here changes. And nothing is
@@ -156,7 +159,7 @@ function renderHistory() {
     const amt = fmtPC(BigInt(p.pcToDeposit));
     pendingHtml = `<div class="hpending"><b>⏳ In progress</b> — ~${amt} $PC ready, not yet locked${p.recipient ? ` for ${shortA(p.recipient)}` : ''}.<br><button type="button" id="resumeGo2">Resume &amp; lock</button></div>`;
   }
-  if (!a.length && !pendingHtml) { el.innerHTML = '<div class="hempty">No top-ups recorded on this device yet.</div>'; return; }
+  if (!a.length && !pendingHtml) { el.innerHTML = '<div class="hempty">No transfers recorded on this device yet.</div>'; return; }
   el.innerHTML = pendingHtml + a.map(e => {
     const pc = (+e.pc).toLocaleString(undefined, { maximumFractionDigits: 4 });
     const amt = (+e.amountIn).toLocaleString(undefined, { maximumFractionDigits: 6 });
@@ -184,7 +187,7 @@ function showTab(which) {
   if (hist) { renderHistory(); backfillHistory(); }
 }
 function clearHistory() {
-  if (!confirm('Clear your top-up history on this device? This cannot be undone. Your on-chain transactions are not affected.')) return;
+  if (!confirm('Clear your bridge history on this device? This cannot be undone. Your on-chain transactions are not affected.')) return;
   localStorage.removeItem(HISTORY_KEY);
   renderHistory();
 }
@@ -219,7 +222,7 @@ async function backfillHistory() {
   if (changed) { localStorage.setItem(HISTORY_KEY, JSON.stringify(a)); renderHistory(); }
 }
 
-/* ---------------- resumable (interrupted) top-up ----------------
+/* ---------------- resumable (interrupted) bridge-in ----------------
    If a flow is interrupted after the swap (PC already in the wallet) but
    before the lock, we persist it so the user can resume — locking the $PC
    they already hold — instead of starting over (and never double-swapping). */
@@ -234,10 +237,10 @@ function renderResume() {
   if (!pendingResumable(p)) { el.style.display = 'none'; el.innerHTML = ''; return; }
   const amt = fmtPC(BigInt(p.pcToDeposit));
   el.style.display = 'block';
-  el.innerHTML = `<b>⏳ Unfinished top-up.</b> You have ~<b>${amt} $PC</b> ready but <b>not yet locked</b>${p.recipient ? ` for <code>${shortA(p.recipient)}</code>` : ''}. Finish it — this only locks the $PC you already hold (no new swap).<br>`
+  el.innerHTML = `<b>⏳ Unfinished transfer.</b> You have ~<b>${amt} $PC</b> ready but <b>not yet locked</b>${p.recipient ? ` for <code>${shortA(p.recipient)}</code>` : ''}. Finish it — this only locks the $PC you already hold (no new swap).<br>`
     + `<button type="button" id="resumeGo">Resume &amp; lock</button><button type="button" id="resumeX" class="ghost">Discard</button>`;
   $('resumeGo').onclick = resumePending;
-  $('resumeX').onclick = () => { if (confirm('Discard this unfinished top-up? Your swapped $PC stays in your wallet — you can bridge it later with the $PC option.')) clearPending(); };
+  $('resumeX').onclick = () => { if (confirm('Discard this unfinished transfer? Your swapped $PC stays in your wallet — you can bridge it later with the $PC option.')) clearPending(); };
 }
 
 async function resumePending() {
@@ -248,7 +251,7 @@ async function resumePending() {
   [...$('paywith').children].forEach(x => x.classList.toggle('sel', x.dataset.pay === 'PC'));
   $('payLabel').textContent = 'PC';
   $('swapNote').style.display = 'none';
-  $('submit').textContent = 'Review & top up';
+  $('submit').textContent = 'Review & bridge in';
   if (p.recipient) $('recipient').value = p.recipient;
   let bal = 0n;
   try { bal = await new ethers.Contract(CFG.pcTokenAddress, ERC20, provider).balanceOf(account); } catch {}
@@ -287,7 +290,7 @@ async function connect() {
   renderResume();
   await refreshBalance();
   /* Pre-fill from the pill, once, into an empty box — never over a resumable
-     top-up, which has its own amount. The visitor reviews it like any other. */
+     bridge-in, which has its own amount. The visitor reviews it like any other. */
   if (PREFILL && !$('amount').value && !pendingResumable(loadPending())) {
     $('amount').value = PREFILL;
     try { await refreshQuote(); checkCapacity(); } catch {}
@@ -337,7 +340,7 @@ function checkCapacity() {
   const need = pcOutNow();
   if (need > 0n && need > poolBal) {
     warn.style.display = 'block';
-    warn.innerHTML = `Not enough bridge capacity right now — only <b>${fmtPC(poolBal)} PC</b> is available to receive. Please top up a smaller amount. Need more? Contact support at <a href="${CFG.discordUrl}" target="_blank" rel="noopener">${CFG.discordUrl.replace('https://','')}</a>.`;
+    warn.innerHTML = `Not enough bridge capacity right now — only <b>${fmtPC(poolBal)} PC</b> is available to receive. Please bridge a smaller amount. Need more? Contact support at <a href="${CFG.discordUrl}" target="_blank" rel="noopener">${CFG.discordUrl.replace('https://','')}</a>.`;
     $('submit').disabled = true;
     return false;
   }
@@ -356,7 +359,19 @@ async function refreshQuote() {
   quotedOut = 0n;
   const q = $('quote'), t = TOK();
   const amt = $('amount').value.trim();
-  if (payWith === 'PC' || !amt || Number(amt) <= 0 || !router) { q.style.display = 'none'; return; }
+  if (!amt || !(Number(amt) > 0)) { q.style.display = 'none'; return; }
+  /* Paying in $PC is 1:1 — no swap, no route, no slippage. Say the figure
+     anyway: an empty box next to a filled-in amount reads as "nothing will
+     happen", and this is the one path where the exact amount is knowable up
+     front, so it is the one path that should never be silent. */
+  if (payWith === 'PC') {
+    const out = Number(amt).toLocaleString(undefined, { maximumFractionDigits: 6 });
+    q.style.display = 'block';
+    q.innerHTML = `You expect to receive <b>${out} $PC</b> on Pentagon Chain`
+      + ` <span style="color:var(--pg-text-muted)">(1:1 — no swap, no slippage)</span>`;
+    return;
+  }
+  if (!router) { q.style.display = 'none'; return; }
   try {
     const amountIn = ethers.parseUnits(amt, t.dp);
     const amounts = await router.getAmountsOut(amountIn, pathFor());
@@ -364,8 +379,8 @@ async function refreshQuote() {
     const pcOut = +ethers.formatUnits(quotedOut, 18);
     const minOut = +ethers.formatUnits(quotedOut * BigInt(10000 - CFG.slippageBps) / 10000n, 18);
     q.style.display = 'block';
-    q.innerHTML = `You receive ≈ <b>${pcOut.toLocaleString(undefined,{maximumFractionDigits:4})} $PC</b> <span style="color:#7fae95">(min ${minOut.toLocaleString(undefined,{maximumFractionDigits:4})} after ${CFG.slippageBps/100}% slippage, via Uniswap)</span>`;
-  } catch { q.style.display = 'block'; q.innerHTML = '<span style="color:#e0a26a">No route / pool too thin for this size.</span>'; }
+    q.innerHTML = `You receive ≈ <b>${pcOut.toLocaleString(undefined,{maximumFractionDigits:4})} $PC</b> <span style="color:var(--pg-text-muted)">(min ${minOut.toLocaleString(undefined,{maximumFractionDigits:4})} after ${CFG.slippageBps/100}% slippage, via Uniswap)</span>`;
+  } catch { q.style.display = 'block'; q.innerHTML = '<span style="color:var(--pg-warning)">No route / pool too thin for this size.</span>'; }
 }
 
 /* ---------------- guided, on-chain-verified stepper ----------------
@@ -474,7 +489,7 @@ async function startFlow(e) {
       let expectOut = amountIn;
       if (payWith !== 'PC') { if (quotedOut === 0n) await refreshQuote(); expectOut = quotedOut; }
       if (expectOut > 0n && expectOut > poolBal)
-        return status(`Bridge capacity is only ${fmtPC(poolBal)} PC right now — top up less, or contact support: ${CFG.discordUrl}`, 'err');
+        return status(`Bridge capacity is only ${fmtPC(poolBal)} PC right now — bridge less, or contact support: ${CFG.discordUrl}`, 'err');
     }
     if (payWith !== 'PC' && quotedOut === 0n) { await refreshQuote(); if (quotedOut === 0n) return status('No swap route available right now.', 'err'); }
 
@@ -575,7 +590,7 @@ function niceErr(err) {
   if (/ACTION_REJECTED|user rejected|4001/i.test(s)) return 'You dismissed the wallet prompt — no problem, just retry when ready.';
   if (/TRANSFER_FROM_FAILED/i.test(s)) return 'The approval wasn\'t live on-chain yet. The approve step is confirmed now — just retry this step.';
   if (/INSUFFICIENT_OUTPUT/i.test(s)) return 'The price moved past your slippage limit. Retry to get a fresh quote.';
-  if (/insufficient funds/i.test(s)) return 'Not enough ETH to cover gas (or the amount). Top up ETH and retry.';
+  if (/insufficient funds/i.test(s)) return 'Not enough ETH to cover gas (or the amount). Add more ETH and retry.';
   if (/deadline|expired/i.test(s)) return 'The transaction took too long and expired. Retry.';
   return s;
 }
@@ -600,7 +615,7 @@ function stepFail(i, err, opts) {
   const both = opts.recheck && opts.retry
     ? ' If your wallet shows this transaction <b>succeeded</b>, use <b>Check again</b>. Only <b>Retry</b> if it failed or you\'re unsure it was sent.'
     : opts.recheck ? ' Your transaction may already be going through — use <b>Check again</b> in a moment.' : '';
-  hint.innerHTML = `⚠️ ${esc(niceErr(err))}${both}<br><span style="color:#7f8fb0">Nothing was lost. Error code <code>${code}</code> — quote it in <a href="${CFG.discordUrl}" target="_blank" rel="noopener">support</a> if it keeps failing.</span>`;
+  hint.innerHTML = `⚠️ ${esc(niceErr(err))}${both}<br><span style="color:var(--pg-text-muted)">Nothing was lost. Error code <code>${code}</code> — quote it in <a href="${CFG.discordUrl}" target="_blank" rel="noopener">support</a> if it keeps failing.</span>`;
   $('stepAct').append(hint);
   status(`Step ${i + 1} of ${total} needs attention (${code}).`, 'err');
 }
@@ -636,7 +651,10 @@ async function finalize() {
     + `<div class="tstep" id="tPc"><div class="tstep-h">② Releasing $PC on ${CFG.pcChainName}</div>`
     + `<div class="tstep-s" id="tPcS">Starts automatically once ${CFG.ethChainName} confirmations complete.</div></div>`
     + `</div>`;
-  status('Locked in. Tracking the release below — safe to leave this open.', 'ok');
+  /* "Safe to leave this open" answered the wrong question — it said the page
+     MAY stay open without saying whether it MUST. The release is signed and
+     submitted by the keeper on-chain; this page only watches. Say that. */
+  status('Locked in ✓ The release happens on-chain — you can close this page safely. Tracking it below if you want to watch.', 'ok');
   tellOpener('locked');
   $('submit').style.display = ''; $('submit').disabled = false;
   startTracker(ctx);
@@ -741,7 +759,7 @@ window.addEventListener('DOMContentLoaded', () => {
     $('payLabel').textContent = TOK().label;
     $('amount').value = ''; $('quote').style.display = 'none'; quotedOut = 0n;
     $('swapNote').style.display = payWith === 'PC' ? 'none' : 'block';
-    $('submit').textContent = payWith === 'PC' ? 'Review & top up' : `Review swap & top-up (${TOK().label})`;
+    $('submit').textContent = payWith === 'PC' ? 'Review & bridge in' : `Review swap & bridge in (${TOK().label})`;
     resetFlow();
     if (account) refreshBalance();
     checkCapacity();

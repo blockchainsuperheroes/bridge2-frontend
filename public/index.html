@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Pentagon Chain · Top up $PC</title>
+  <title>Pentagon Chain · One-Way Bridge — get $PC mainnet gas</title>
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js" integrity="sha384-gpR0Q6Hx/O+uevlbpbANbS0LWjbejPV1sqD/8w422l/fW8whGY0EPmKw3uG7ACYP" crossorigin="anonymous"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&display=swap">
@@ -187,17 +187,17 @@
   <!-- ============ FIRST-RUN TERMS GATE ============ -->
   <div id="gate">
     <div class="gate-card card">
-      <h1>Pentagon Chain — $PC top-up</h1>
+      <h1>Pentagon Chain — one-way $PC bridge</h1>
       <p>Pentagon Chain is a <b>gamified ecosystem</b>. $PC is its <b>prepaid utility credit</b> — the same idea as an iTunes balance, Roblox Robux, or Twitch Bits: an access/gas credit you use <i>inside</i> the ecosystem.</p>
 
-      <div class="banner"><b>Notice:</b> following a recent, unintended exploit, the previous bridge is <b>fully locked</b>. This is the new, secured <b>one-way top-up</b> path — a 2-of-2 signed, on-chain, trustless flow with open visibility to everyone's status.</div>
+      <div class="banner"><b>Notice:</b> following a recent, unintended exploit, the previous bridge is <b>fully locked</b>. This is the new, secured <b>one-way bridge</b> — a 2-of-2 signed, on-chain, trustless flow with open visibility to everyone's status.</div>
 
-      <p class="fine" style="margin-top:12px"><b>In short:</b> this is a <b>one-way</b> top-up. Ethereum $PC you send is <b>locked permanently</b> and you receive a <b>non-transferable in-ecosystem credit</b> with <b>no cash value</b> and no route back out. Please read the full terms below — scroll to the end to enable the button.</p>
+      <p class="fine" style="margin-top:12px"><b>In short:</b> this is a <b>one-way bridge</b>. Ethereum $PC you send is <b>locked permanently</b> and you receive a <b>non-transferable in-ecosystem credit</b> with <b>no cash value</b> and no route back out. Please read the full terms below — scroll to the end to enable the button.</p>
 
       <div class="tosbox" id="tosbox">
         <ul class="facts">
           <li><b>One-way only</b> — you move $PC <i>into</i> the ecosystem; there is no user route back out to Ethereum.</li>
-          <li>The Ethereum $PC you top up is <b>locked permanently</b>; you receive an in-ecosystem credit.</li>
+          <li>The Ethereum $PC you send is <b>locked permanently</b>; you receive an in-ecosystem credit.</li>
           <li><b>Rewards for effort &amp; progress</b> (leaderboards, VIP tiers) are <b>funded separately</b>, on-chain and transparent.</li>
         </ul>
 
@@ -212,7 +212,7 @@
           <li>Guaranteed convertible to outside value by any medium — there may currently be no way to move $PC value off Pentagon Chain</li>
         </div>
 
-        <p class="fine">By continuing you confirm you've read the <a href="https://pentagon.games/PCtokenomics#not" target="_blank" rel="noopener">$PC tokenomics &amp; community guide</a>. Think prepaid top-up card / arcade credits — value is in the play, not in resale.</p>
+        <p class="fine">By continuing you confirm you've read the <a href="https://pentagon.games/PCtokenomics#not" target="_blank" rel="noopener">$PC tokenomics &amp; community guide</a>. Think prepaid card / arcade credits — value is in the play, not in resale.</p>
         <p class="fine" style="margin-top:8px">$PC works like a loyalty / rewards points program — think Starbucks Stars, airline miles, or membership points: its value is in what it unlocks <b>inside</b> Pentagon Chain, not in resale. It is <b>not listed on any major exchange</b>, and there may currently be <b>no way to convert it to value outside Pentagon Chain</b> by any medium. For more information, read the <a href="https://pentagon.games/PCtokenomics#not" target="_blank" rel="noopener">tokenomics</a>.</p>
         <p class="fine" style="margin-top:8px">Do not use this service if you are a citizen or resident of, or located in, any jurisdiction where acquiring or holding such tokens is restricted or prohibited, or if you are unsure of your eligibility. If you don't understand or don't agree with these terms, do not proceed.</p>
         <p class="fine" style="margin-top:8px">This interface is an <b>open-source, community-built</b> frontend to the Pentagon Chain bridge contracts — one, but not the exclusive, way to interact with them. The source is public and anyone may review, fork, or self-host it (<a href="https://github.com/blockchainsuperheroes/bridge2-frontend" target="_blank" rel="noopener">source</a>); this deployment is served as a static Cloudflare Page. It is provided by community members <b>"as is," without warranties</b>, and is <b>non-custodial</b> — you transact directly with the on-chain contracts through your own wallet. Always verify you are on the official Pentagon Games domain.</p>
@@ -228,13 +228,13 @@
   <!-- ============ APP ============ -->
   <div id="app">
     <div class="hero">
-      <span class="badge">One-way · into Pentagon Chain</span>
-      <h1>Top up <em>$PC</em></h1>
+      <span class="badge">One-way bridge</span>
+      <h1>Get <em>$PC</em> mainnet gas</h1>
       <p class="sub">Lock $PC on Ethereum and receive in-ecosystem $PC on Pentagon Chain, usually within a few minutes. There is no route back out — <a href="#" id="showterms">read the terms</a>.</p>
     </div>
     <div class="appcard card">
       <div class="tabs">
-        <button type="button" id="tabTopup" class="sel">Top up</button>
+        <button type="button" id="tabTopup" class="sel">Bridge-In</button>
         <button type="button" id="tabHistory">History</button>
       </div>
 
@@ -274,7 +274,7 @@
           <span class="ow-b">The $PC you send is <b>locked on Ethereum permanently</b>. You receive in-ecosystem $PC on Pentagon Chain, which <b>cannot be sent back out</b> and has no cash value. There is no return trip — please be sure before you continue.</span>
         </div>
 
-        <button id="submit" class="cta" type="submit">Review &amp; top up</button>
+        <button id="submit" class="cta" type="submit">Review &amp; bridge in</button>
 
         <div class="steps" id="steps">
           <div class="hdr" id="stepsHdr"></div>
@@ -292,7 +292,7 @@
         <button type="button" id="clearHistory" class="hclear">Clear history on this device</button>
       </div>
 
-      <p class="appfine">One-way top-up · in-ecosystem $PC has no cash value, is non-transferable &amp; non-refundable · <a href="#" id="showterms2">full terms</a> · open-source, community-built interface (non-custodial, as-is), served via Cloudflare Pages. Confirm you're on the official Pentagon Games domain.</p>
+      <p class="appfine">One-way bridge · in-ecosystem $PC has no cash value, is non-transferable &amp; non-refundable · <a href="#" id="showterms2">full terms</a> · open-source, community-built interface (non-custodial, as-is), served via Cloudflare Pages. Confirm you're on the official Pentagon Games domain.</p>
     </div>
   </div>
 
