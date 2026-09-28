@@ -67,9 +67,22 @@ function walletProvider() {
   if (WANT_RDNS) { const hit = announced.filter((d) => d.info.rdns === WANT_RDNS).pop(); if (hit) return hit.provider; }
   return window.ethereum || null;
 }
+/* Only these may be told anything. The payload is a bare status string with no
+   amount and no address, so '*' would leak little — but the target origin costs
+   nothing to pin, and on a page that signs approvals we don't hand anything to
+   whoever happens to be window.opener. Unknown opener: say nothing. */
+const OPENER_ORIGINS = [
+  'https://pentagon.games', 'https://www.pentagon.games',
+  'https://getpc.pentagon.games', 'https://bridge.pentagon.games',
+];
+function openerOrigin() {
+  try { const o = new URL(document.referrer).origin; return OPENER_ORIGINS.includes(o) ? o : null; }
+  catch { return null; }
+}
 function tellOpener(status) {
   if (!POPUP) return;
-  try { if (window.opener) window.opener.postMessage({ type: 'pg:bridge', status }, '*'); } catch {}
+  const target = openerOrigin();
+  try { if (window.opener && target) window.opener.postMessage({ type: 'pg:bridge', status }, target); } catch {}
 }
 function showDone() {
   if (!POPUP || $('popupDone')) return;
