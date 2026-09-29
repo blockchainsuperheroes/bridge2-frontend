@@ -63,6 +63,10 @@ if (POPUP) {
    bridge could otherwise connect a different wallet than the one the pill
    showed. Unknown or absent rdns: window.ethereum, as before. */
 const WANT_RDNS = (() => { const r = (QS.get('wallet') || '').trim(); return /^[a-z0-9][a-z0-9.-]{2,100}$/i.test(r) ? r : ''; })();
+/* ?recipient=0x… — credit a different Pentagon Chain address than the connected Ethereum wallet, e.g. the
+   pentagon.games pill opening the bridge for a member's Pentagon AI (PGAI) wallet, which has no Ethereum
+   side of its own. Only prefills the box: the visitor sees it and can change it before bridging. */
+const RECIPIENT = (() => { const r = (QS.get('recipient') || '').trim(); return /^0x[0-9a-fA-F]{40}$/.test(r) ? r : ''; })();
 const announced = [];
 window.addEventListener('eip6963:announceProvider', (e) => { const d = e.detail; if (d && d.provider && d.info) announced.push(d); });
 window.dispatchEvent(new Event('eip6963:requestProvider'));
@@ -286,7 +290,7 @@ async function connect() {
   router = new ethers.Contract(CFG.uniV2Router, ROUTER, signer);
   $('connect').textContent = account.slice(0, 6) + '…' + account.slice(-4);
   $('form').style.display = 'block';
-  if (!$('recipient').value) $('recipient').value = account;
+  if (!$('recipient').value) $('recipient').value = RECIPIENT || account;
   renderResume();
   await refreshBalance();
   /* Pre-fill from the pill, once, into an empty box — never over a resumable
